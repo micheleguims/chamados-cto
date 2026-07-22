@@ -1,98 +1,240 @@
-import React from 'react';
-import { Star, ArrowDownUp, Clock, User } from 'lucide-react';
-import Badge from './Badge';
-import { getStatusColor, getTicketAgeDays, getAgingAlertStyle } from '../utils/helpers';
+// ==========================================
+// TICKET CARD
+// src/components/TicketCard.jsx
+// ==========================================
 
-export default function TicketCard({ 
-  ticket, 
-  index, 
-  member, 
-  sortMode, 
-  viewLayout = 'member', 
-  handleDragStart, 
-  handleDragOver, 
-  handleCardReorderDrop, 
-  onViewTicket 
+import React from "react";
+
+import {
+  School,
+  Building2,
+  MapPin,
+  Clock,
+  Wrench,
+  AlertTriangle,
+  Eye
+} from "lucide-react";
+
+import Badge from "./Badge";
+
+import {
+  getStatusColor,
+  getPriorityColor,
+  getSlaInfo
+} from "../utils/helpers";
+
+export default function TicketCard({
+  ticket,
+  onClick,
+  draggable = false,
+  onDragStart
 }) {
-  const otherAssignees = ticket.assignedTo.filter(p => p !== member);
-  const isPool = member === 'Fila';
-  
-  const daysOpen = getTicketAgeDays(ticket.createdAt);
-  const isClosed = ticket.status === 'Resolvido' || ticket.status === 'Encerrado';
-  const agingAlert = getAgingAlertStyle(daysOpen, isClosed);
+  const school =
+    ticket?.school || {};
+
+  const agency =
+    ticket?.externalAction?.agency;
+
+  const protocol =
+    ticket?.externalAction?.protocol;
+
+  const slaInfo =
+    getSlaInfo(
+      ticket.createdAt,
+      ticket.priority,
+      ticket.status
+    );
+
+  const getOpenedLabel = (
+    createdAt
+  ) => {
+
+    const created =
+      new Date(createdAt);
+
+    const now =
+      new Date();
+
+    const diffHours =
+      Math.floor(
+        (now - created) /
+          (1000 * 60 * 60)
+      );
+
+    if (diffHours < 1)
+      return "Aberto agora";
+
+    if (diffHours < 24)
+      return `${diffHours}h aberto`;
+
+    const days =
+      Math.floor(
+        diffHours / 24
+      );
+
+    return `${days} ${
+      days === 1
+        ? "dia"
+        : "dias"
+    } aberto`;
+  };
 
   return (
-    <div 
-      draggable 
-      onDragStart={(e) => handleDragStart(e, ticket.id, viewLayout === 'status' ? ticket.status : member)}
-      onDragOver={handleDragOver}
-      onDrop={(e) => isPool ? null : handleCardReorderDrop(e, ticket.id, member)}
-      onClick={() => onViewTicket(ticket)}
-      className={`bg-white p-3 rounded-lg border border-slate-200 cursor-pointer shadow-sm transition-all hover:shadow-md hover:border-[#66b6e3] group ${
-        isPool ? 'w-full sm:w-[280px]' : 'relative'
-      }`}
+    <div
+      draggable={draggable}
+      onDragStart={onDragStart}
+      onClick={() => onClick?.(ticket)}
+      className="
+        bg-white
+        p-4
+        rounded-xl
+        border
+        border-slate-200
+        shadow-sm
+        cursor-pointer
+        transition-all
+        hover:shadow-md
+        hover:border-[#66b6e3]
+        group
+      "
     >
-      {/* CABEÇALHO DO CARD */}
-      <div className="flex justify-between items-start mb-2 gap-1">
-        
-        {/* Lógica Alternada: Status vs Responsáveis */}
-        {viewLayout === 'status' ? (
-          <div className="flex flex-wrap gap-1">
-            {ticket.assignedTo.length > 0 ? (
-              ticket.assignedTo.map(person => (
-                <span key={person} className="text-[10px] font-bold px-2 py-0.5 bg-[#13335a] text-white rounded-full flex items-center shadow-sm">
-                  <User className="w-3 h-3 mr-1 opacity-70" /> {person}
-                </span>
-              ))
-            ) : (
-              <span className="text-[10px] font-bold px-2 py-0.5 bg-slate-100 text-slate-500 border border-slate-200 rounded-full">
-                Sem atribuição
-              </span>
-            )}
-          </div>
-        ) : (
-          <Badge colorClass={getStatusColor(ticket.status)}>{ticket.status}</Badge>
-        )}
-        
-        <div className="flex flex-col items-end gap-1">
-          {agingAlert && (
-            <div className={`flex items-center px-1.5 py-0.5 rounded text-[10px] border ${agingAlert.classes}`} title="Tempo de permanência em aberto">
-              <Clock className="w-2.5 h-2.5 mr-1 stroke-[2.5]" />
-              {agingAlert.text}
-            </div>
-          )}
 
-          {!isPool && sortMode === 'priority' && viewLayout === 'member' && (
-            <div className={`flex items-center px-2 py-0.5 rounded-full border shadow-sm ${index === 0 ? 'text-amber-600 bg-amber-50 border-amber-200' : 'text-slate-500 bg-slate-100 border-slate-200'}`}>
-              {index === 0 && <Star className="w-3 h-3 mr-1 fill-current" />}
-              <span className="text-[10px] font-bold">#{index + 1}</span>
-            </div>
-          )}
+      {/* HEADER */}
+      <div className="flex justify-between items-start mb-3">
+
+        <div>
+          <div className="font-mono text-xs font-bold text-[#13335a]">
+            {ticket.id}
+          </div>
         </div>
+
+        <Eye className="w-4 h-4 text-slate-300 group-hover:text-[#13335a] transition" />
+
       </div>
-      
-      <div className="font-semibold text-sm text-slate-800 line-clamp-2 my-1">
+
+      {/* TÍTULO */}
+      <h3 className="font-bold text-slate-800 text-sm leading-snug mb-3">
         {ticket.title}
-      </div>
-      
-      {/* RODAPÉ DO CARD */}
-      <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100">
-        <div className="flex items-center gap-1.5 min-w-0 flex-1">
-          <span className="text-[10px] text-slate-400 font-mono">{ticket.id}</span>
-          
-          {isPool && <span className="text-xs text-slate-500 truncate">{ticket.sector}</span>}
-          
-          {/* Mostra parceiros compartilhados apenas no layout de membro */}
-          {viewLayout === 'member' && !isPool && otherAssignees.length > 0 && (
-            <span className="text-[9px] font-bold text-[#66b6e3] bg-blue-50 px-1 rounded-sm truncate" title="Compartilhado">
-              & {otherAssignees.join(', ')}
-            </span>
-          )}
+      </h3>
+
+      {/* ESCOLA */}
+      <div className="space-y-1 mb-3">
+
+        <div className="text-xs text-slate-700 flex items-start">
+          <School className="w-3.5 h-3.5 mr-1.5 mt-0.5 text-[#13335a] flex-shrink-0" />
+
+          <span>
+            {school.name ||
+              "Unidade não informada"}
+          </span>
         </div>
-        {viewLayout === 'member' && !isPool && sortMode === 'priority' && (
-          <ArrowDownUp className="w-3 h-3 text-slate-300 group-hover:text-[#66b6e3]" />
+
+        {school.cre && (
+          <div className="text-xs text-slate-500 flex items-center">
+            <Building2 className="w-3.5 h-3.5 mr-1.5" />
+
+            {school.cre}
+          </div>
         )}
+
+        {school.neighborhood && (
+          <div className="text-xs text-slate-500 flex items-center">
+            <MapPin className="w-3.5 h-3.5 mr-1.5" />
+
+            {school.neighborhood}
+          </div>
+        )}
+
       </div>
+
+      {/* TAGS */}
+      <div className="flex flex-wrap gap-2 mb-3">
+
+        <Badge
+          colorClass={getStatusColor(
+            ticket.status
+          )}
+        >
+          {ticket.status}
+        </Badge>
+
+        {ticket.priority && (
+          <Badge
+            colorClass={getPriorityColor(
+              ticket.priority
+            )}
+          >
+            {ticket.priority}
+          </Badge>
+        )}
+
+      </div>
+
+      {/* CATEGORIA */}
+      <div className="text-xs text-slate-600 mb-2">
+
+        <span className="font-semibold">
+          {ticket.category}
+        </span>
+
+        {ticket.subcategory &&
+          ` • ${ticket.subcategory}`}
+      </div>
+
+      {/* IMPACTO */}
+      {ticket.impact && (
+        <div className="text-xs text-slate-500 mb-2">
+          Impacto: {ticket.impact}
+        </div>
+      )}
+
+      {/* SLA */}
+      {slaInfo && (
+        <div
+          className={`
+            inline-flex
+            items-center
+            px-2
+            py-1
+            rounded
+            border
+            text-xs
+            mb-3
+            ${slaInfo.classes}
+          `}
+        >
+          <AlertTriangle className="w-3 h-3 mr-1" />
+
+          {slaInfo.text}
+        </div>
+      )}
+
+      {/* ÓRGÃO */}
+      {agency && (
+        <div className="text-xs text-slate-500 mb-2 flex items-center">
+          <Wrench className="w-3.5 h-3.5 mr-1.5" />
+          {agency}
+        </div>
+      )}
+
+      {/* PROTOCOLO */}
+      {protocol && (
+        <div className="text-[11px] text-slate-600 mb-2 font-mono bg-slate-50 rounded px-2 py-1 border">
+          Protocolo: {protocol}
+        </div>
+      )}
+
+      {/* RODAPÉ */}
+      <div className="pt-2 border-t border-slate-100 flex items-center text-[11px] text-slate-400">
+
+        <Clock className="w-3 h-3 mr-1" />
+
+        {getOpenedLabel(
+          ticket.createdAt
+        )}
+
+      </div>
+
     </div>
   );
 }

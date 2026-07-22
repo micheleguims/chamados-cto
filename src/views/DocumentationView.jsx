@@ -1,108 +1,241 @@
 // ==========================================
-// 9. DOCUMENTAÇÃO
-// Arquivo Futuro Sugerido: src/views/DocumentationView.jsx
+// DOCUMENTAÇÃO DO SISTEMA
+// src/views/DocumentationView.jsx
 // ==========================================
 
-import React from 'react';
-import { FileCode, User, FileText, ShieldAlert } from 'lucide-react';
+import React from "react";
 
-export default function DocumentationView ({ currentUser }) {
-    return (
-        <div className="max-w-4xl mx-auto bg-white p-8 rounded-lg shadow-sm border border-slate-200">
-            <div className="flex items-center mb-8 border-b pb-4">
-            <FileCode className="w-8 h-8 text-[#13335a] mr-3" />
-            <div>
-                <h1 className="text-2xl font-bold text-slate-800">Documentação e Checkpoints</h1>
-                <p className="text-slate-500">Registro de decisões arquiteturais para IA e Desenvolvedores.</p>
-            </div>
-            </div>
+import {
+  FileText,
+  School,
+  Building2,
+  Users,
+  Wrench,
+  Clock,
+  ShieldCheck,
+  TrendingUp,
+  AlertTriangle
+} from "lucide-react";
 
-            <div className="space-y-8">
-            <section>
-                <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center"><User className="mr-2"/> Para Humanos (Usuários e Devs)</h2>
-                <div className="prose text-slate-700 text-sm space-y-4">
-                <p><strong>Objetivo:</strong> MVP do Portal Interno de Chamados.</p>
-                <p><strong>Funcionalidades Atuais:</strong></p>
-                <ul className="list-disc pl-5 space-y-1">
-                    <li>Abertura de chamados com classificação em árvore (Processo {'>'} Subárea {'>'} Detalhe).</li>
-                    <li>Sistema de visualização com limite inteligente de 5 chamados abertos e botão de histórico estendido.</li>
-                    <li>Visualização de métricas de atendimento nativa por gráficos de barra responsivos.</li>
-                    <li>Alocação dinâmica de chamados em Kanban vertical (Raias da Equipe vs Piscina de Chamados). Suporta drag-and-drop de prioridades com marcadores visuais.</li>
-                    <li>Anexação visual de imagens e arquivos (Simulação) tanto na tela de detalhesamp; quanto na abertura do chamado com alertas e dupla-confirmação para exclusão.</li>
-                    <li>Preenchimento de e-mail de contato do solicitante para envio de automações.</li>
-                    <li>Refatoração de Clean Code isolando subcomponentes modulares e tipagem dinâmica de cores de status.</li>
-                </ul>
-                <p><strong>Pilha Tecnológica Recomendada para Produção:</strong></p>
-                <p>Para automatizar o envio de e-mails em cada movimentação, recomendamos a utilização do <strong>Power Automate</strong> integrado a uma conta de Outlook institucional ou o uso de <strong>Firebase Cloud Functions</strong> com gatilhos de criação no Firestore integrados a serviços de disparo como o SendGrid.</p>
-                </div>
-            </section>
+export default function DocumentationView() {
+  return (
+    <div className="max-w-6xl mx-auto space-y-6">
 
-            {currentUser.role === 'admin' && (
-                <>
-                <section className="bg-slate-50 p-6 rounded-lg border border-slate-200">
-                    <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center"><FileText className="mr-2 text-slate-500"/> Checkpoints & Memory (Para IA)</h2>
-                    <div className="space-y-3 font-mono text-xs text-slate-600">
-                    <div className="p-3 bg-white border border-slate-200 rounded">
-                        <span className="font-bold text-[#13335a]">[CHECKPOINT 01] - Arquitetura Inicial (MVP V1)</span>
-                        <p className="mt-1">Decisão: Uso de React em arquivo único com estado em memória (`useState` global no componente App) para validação rápida de UI/UX. Banco de dados real (Firebase/SQL) postergado para V2.</p>
-                    </div>
-                    <div className="p-3 bg-white border border-slate-200 rounded">
-                        <span className="font-bold text-green-600">[CHECKPOINT 02] - Estrutura de Classificação</span>
-                        <p className="mt-1">Decisão: Implementação da regra de "Árvore de Sistemas" (Sistemas {'>'} Áreas {'>'} Detalhes). Evitou-se input livre para garantir relatórios estruturados futuros. Ligado ao requisito: "manter a minúcia sem dificuldade".</p>
-                    </div>
-                    <div className="p-3 bg-white border border-slate-200 rounded">
-                        <span className="font-bold text-[#66b6e3]">[CHECKPOINT 03] - Adaptação Mobile e Identidade Visual</span>
-                        <p className="mt-1">Decisão: UI refatorada para responsividade (escondendo colunas menos vitais em mobile) e chat reestilizado no formato clássico de balões. Atualização da Árvore de Processos (PowerApps, Dashboards, Dados) e integração de amostra de dados reais do Sici para os Setores Solicitantes.</p>
-                    </div>
-                    <div className="p-3 bg-white border border-slate-200 rounded">
-                        <span className="font-bold text-indigo-600">[CHECKPOINT 04] - Login, Distribuição e Metas (Admin)</span>
-                        <p className="mt-1">Decisão: Implementada barreira de login fake. Administradores podem visualizar todos os chamados e alocar tarefas via Kanban interativo na tela. Usuários comuns são restritos às próprias visões de setor para segurança.</p>
-                    </div>
-                    <div className="p-3 bg-white border border-slate-200 rounded">
-                        <span className="font-bold text-teal-600">[CHECKPOINT 05] - Priorização Avançada e Upload</span>
-                        <p className="mt-1">Decisão: Atualização profunda da View Kanban suportando ordenação manual por index numérico via Drag-and-Drop + ordenação por Data. Implementado visualizador de ObjectURLs no Frontend para simular a abertura de Imagens, PDFs e Planilhas no navegador.</p>
-                    </div>
-                    <div className="p-3 bg-white border border-slate-200 rounded">
-                        <span className="font-bold text-teal-600">[CHECKPOINT 06] - Refatoração do Objeto de Categorias e UI</span>
-                        <p className="mt-1">Decisão: O objeto `PROCESS_TREE` agora lida dinamicamente com profundidades variáveis (1 a 3 níveis). Implementado modal customizado de dupla confirmação de exclusão de anexos sem usar chamadas nativas bloqueantes.</p>
-                    </div>
-                    <div className="p-3 bg-white border border-slate-200 rounded border-l-4 border-l-amber-500">
-                        <span className="font-bold text-amber-600">[CHECKPOINT 07] - Refatoração de Clean Code e Componentização (SRP)</span>
-                        <p className="mt-1">Decisão: Extração do subcomponente modular `TicketCard` de dentro da `AllocationView`. Uniformização dos status via componente `Badge` global e tratamento unificado de layouts sem dados via `EmptyState`. Adicionado helper para tratamento de iniciais de usuários.</p>
-                    </div>
-                    <div className="p-3 bg-white border border-slate-200 rounded border-l-4 border-l-[#13335a]">
-                        <span className="font-bold text-[#13335a]">[CHECKPOINT 08] - Linha do Tempo Estendida, Kanban Alternativo e Controle de SLA</span>
-                        <p className="mt-1">Decisão: Criação do nó de dados `history` no objeto do chamado para tracking indestrutível de eventos operacionais. Desenvolvido o alternador de layout (`viewLayout`) na tela de distribuição para suportar visualização matricial por Status ou por Colaborador. Inserida lógica de envelhecimento (Aging de chamados) por contadores de tempo calculados em helpers, gerando indicadores discretos que protegem a experiência de uso contra poluição visual.</p>
-                    </div>
-                    </div>
-                </section>
+      {/* CABEÇALHO */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
 
-                <section className="bg-amber-50 p-6 rounded-lg border border-amber-200">
-                    <h2 className="text-xl font-bold text-amber-800 mb-4 flex items-center"><ShieldAlert className="mr-2"/> Issues e Planejamentos Futuros</h2>
-                    <div className="prose text-amber-900 text-sm space-y-4">
-                    <ul className="list-disc pl-5 space-y-3">
-                        <li>
-                        <strong>Como filtrar se a pessoa pode abrir aquela solicitação? Como validar se ela tem permissão?</strong>
-                        <p className="text-xs text-slate-600 mt-1">Solução futura: Integração com o Active Directory institucional (AD/LDAP) mapeando os cargos ou com as tabelas de autorizações do Sici para verificar as atribuições do usuário.</p>
-                        </li>
-                        <li>
-                        <strong>Adicionar IA para categorizar as prioridades:</strong>
-                        <p className="text-xs text-slate-600 mt-1">Solução futura: Utilizar a API do Gemini 2.5 Flash analisando o texto do campo de descrição do chamado para atribuir as prioridades (Baixa, Média, Alta ou Crítica) de forma automatizada no momento de salvar.</p>
-                        </li>
-                        <li>
-                        <strong>Sensibilização do Usuário Final:</strong>
-                        <p className="text-xs text-slate-600 mt-1">Garantir nas futuras versões alertas claros em vermelho sobre a importância de documentar o passo a passo que levou ao erro e de incluir prints.</p>
-                        </li>
-                        <li>
-                        <strong>Envio de Movimentações por E-mail:</strong>
-                        <p className="text-xs text-slate-600 mt-1">Integração backend com serviços SMTP para notificar o email inserido pelo solicitante sobre novas interações no chat ou alteração de status.</p>
-                        </li>
-                    </ul>
-                    </div>
-                </section>
-                </>
-            )}
-            </div>
+        <div className="flex items-center mb-3">
+          <FileText className="w-6 h-6 mr-2 text-[#13335a]" />
+
+          <h1 className="text-2xl font-bold text-slate-800">
+            Documentação do Sistema
+          </h1>
         </div>
-    );
+
+        <p className="text-slate-600">
+          Sistema de Gestão de Ocorrências de Infraestrutura Escolar.
+        </p>
+
+      </div>
+
+      {/* OBJETIVO */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+
+        <h2 className="font-bold text-slate-800 mb-3">
+          Objetivo
+        </h2>
+
+        <p className="text-slate-600 leading-relaxed">
+          Transformar comunicações operacionais de infraestrutura
+          em chamados rastreáveis, classificados por prioridade,
+          monitorados por Escola, CRE, COR e CTO,
+          com histórico completo e indicadores executivos.
+        </p>
+
+      </div>
+
+      {/* PERFIS */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+
+        <h2 className="font-bold text-slate-800 mb-4">
+          Perfis de Acesso
+        </h2>
+
+        <div className="grid md:grid-cols-2 xl:grid-cols-5 gap-4">
+
+          <div className="border rounded-lg p-4">
+            <School className="w-5 h-5 text-[#13335a] mb-2" />
+            <div className="font-semibold">
+              Escola
+            </div>
+            <div className="text-xs text-slate-500 mt-1">
+              Abre chamados e acompanha andamento.
+            </div>
+          </div>
+
+          <div className="border rounded-lg p-4">
+            <Building2 className="w-5 h-5 text-[#13335a] mb-2" />
+            <div className="font-semibold">
+              CRE
+            </div>
+            <div className="text-xs text-slate-500 mt-1">
+              Valida, classifica e prioriza.
+            </div>
+          </div>
+
+          <div className="border rounded-lg p-4">
+            <Users className="w-5 h-5 text-[#13335a] mb-2" />
+            <div className="font-semibold">
+              COR
+            </div>
+            <div className="text-xs text-slate-500 mt-1">
+              Monitora ocorrências críticas.
+            </div>
+          </div>
+
+          <div className="border rounded-lg p-4">
+            <Wrench className="w-5 h-5 text-[#13335a] mb-2" />
+            <div className="font-semibold">
+              CTO
+            </div>
+            <div className="text-xs text-slate-500 mt-1">
+              Aciona órgãos e concessionárias.
+            </div>
+          </div>
+
+          <div className="border rounded-lg p-4">
+            <TrendingUp className="w-5 h-5 text-[#13335a] mb-2" />
+            <div className="font-semibold">
+              Gestão
+            </div>
+            <div className="text-xs text-slate-500 mt-1">
+              Acompanha indicadores.
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+      {/* FLUXO */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+
+        <h2 className="font-bold text-slate-800 mb-4">
+          Fluxo Operacional
+        </h2>
+
+        <div className="space-y-3 text-slate-600">
+
+          <div>1. Escola registra ocorrência.</div>
+          <div>2. Sistema gera número único.</div>
+          <div>3. CRE valida e classifica.</div>
+          <div>4. COR monitora chamados críticos.</div>
+          <div>5. CTO registra acionamento externo.</div>
+          <div>6. Atualizações ficam registradas no histórico.</div>
+          <div>7. Chamado é resolvido.</div>
+          <div>8. Escola confirma atendimento.</div>
+          <div>9. Chamado é encerrado formalmente.</div>
+
+        </div>
+
+      </div>
+
+      {/* PRIORIDADES */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+
+        <h2 className="font-bold text-slate-800 mb-4">
+          Prioridades e SLA
+        </h2>
+
+        <div className="grid md:grid-cols-4 gap-4">
+
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <AlertTriangle className="w-5 h-5 text-red-700 mb-2" />
+            <div className="font-bold text-red-700">
+              Crítica
+            </div>
+            <div className="text-sm text-red-600">
+              SLA até 4h
+            </div>
+          </div>
+
+          <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+            <Clock className="w-5 h-5 text-orange-700 mb-2" />
+            <div className="font-bold text-orange-700">
+              Alta
+            </div>
+            <div className="text-sm text-orange-600">
+              SLA até 24h
+            </div>
+          </div>
+
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <Clock className="w-5 h-5 text-yellow-700 mb-2" />
+            <div className="font-bold text-yellow-700">
+              Média
+            </div>
+            <div className="text-sm text-yellow-600">
+              SLA até 72h
+            </div>
+          </div>
+
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <Clock className="w-5 h-5 text-green-700 mb-2" />
+            <div className="font-bold text-green-700">
+              Baixa
+            </div>
+            <div className="text-sm text-green-600">
+              SLA até 7 dias
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+      {/* GOVERNANÇA */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+
+        <h2 className="font-bold text-slate-800 mb-4">
+          Regras de Governança
+        </h2>
+
+        <ul className="space-y-2 text-slate-600 list-disc pl-5">
+          <li>Toda movimentação gera histórico.</li>
+          <li>Toda alteração de prioridade é registrada.</li>
+          <li>Chamados críticos aparecem com destaque.</li>
+          <li>Anexos não substituem descrição textual.</li>
+          <li>Chamados não podem ser encerrados sem solução registrada.</li>
+          <li>Encerramento exige confirmação da unidade escolar.</li>
+        </ul>
+
+      </div>
+
+      {/* ROADMAP */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+
+        <h2 className="font-bold text-slate-800 mb-4">
+          Evoluções Futuras
+        </h2>
+
+        <ul className="space-y-2 text-slate-600 list-disc pl-5">
+          <li>Integração WhatsApp → Pré-Chamado.</li>
+          <li>Integração com Power BI.</li>
+          <li>Mapa georreferenciado.</li>
+          <li>Integração automática com concessionárias.</li>
+          <li>Classificação automática via IA.</li>
+          <li>Painel preditivo de recorrências.</li>
+        </ul>
+
+      </div>
+
+      <div className="bg-[#13335a] text-white rounded-xl p-6">
+        <div className="flex items-center">
+          <ShieldCheck className="w-5 h-5 mr-2" />
+          Sistema de Infraestrutura Escolar • SME-RJ
+        </div>
+      </div>
+
+    </div>
+  );
 }

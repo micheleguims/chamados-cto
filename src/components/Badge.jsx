@@ -1,10 +1,26 @@
+// ==========================================
+// BADGE
 // src/components/Badge.jsx
+// ==========================================
 
-import React from 'react';
+import React from "react";
 
-export default function Badge({ children, colorClass }) {
+export default function Badge({ children, colorClass = "" }) {
   return (
-    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${colorClass}`}>
+    <span
+      className={`
+        inline-flex
+        items-center
+        px-2.5
+        py-1
+        rounded-full
+        border
+        text-xs
+        font-semibold
+        whitespace-nowrap
+        ${colorClass}
+      `}
+    >
       {children}
     </span>
   );

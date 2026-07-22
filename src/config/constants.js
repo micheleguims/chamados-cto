@@ -1,226 +1,224 @@
 // ==========================================
-// 1. DADOS MOCKADOS E CONFIGURAÇÕES INICIAIS
-// Arquivo: src/config/constants.js
+// SISTEMA DE INFRAESTRUTURA ESCOLAR
+// src/config/constants.js
 // ==========================================
 
-export const SECTORS = [
-  { id: "1600", name: "Secretaria Municipal de Educação", sigla: "SME" },
-  { id: "1602", name: "1a. Coordenadoria Regional de Educação", sigla: "E/1a.CRE" },
-  { id: "1603", name: "2a. Coordenadoria Regional de Educação", sigla: "E/2a.CRE" },
-  { id: "10708", name: "Gerência de Operações", sigla: "E/10a.CRE/GOP" },
-  { id: "53330", name: "Coordenadoria Técnica de Infraestrutura", sigla: "E/CTIN" }
+export const CRES = [
+  "1ª CRE",
+  "2ª CRE",
+  "3ª CRE",
+  "4ª CRE",
+  "5ª CRE",
+  "6ª CRE",
+  "7ª CRE",
+  "8ª CRE",
+  "9ª CRE",
+  "10ª CRE",
+  "11ª CRE"
 ];
 
-export const CATEGORIES = ["Erro / Bug", "Melhoria", "Manutenção", "Solicitação de Dados", "Permissão"];
+export const USER_ROLES = [
+  "Escola",
+  "CRE",
+  "COR",
+  "CTO",
+  "Gestão"
+];
 
-export const TEAM_MEMBERS = ["Michele", "Gabi", "Jorge", "Raphael"];
-export const STATUS = ["Aguardando fila", "Em andamento", "Resolvido", "Encerrado"];
-export const OPEN_STATUSES = ["Aguardando fila", "Em andamento"];
+export const STATUS = [
+  "Aberto",
+  "Em análise",
+  "Encaminhado",
+  "Em atendimento",
+  "Reiterado",
+  "Aguardando retorno",
+  "Resolvido",
+  "Encerrado",
+  "Cancelado"
+];
 
-const getRetroDate = (daysAgo) => {
-  const d = new Date();
-  d.setDate(d.getDate() - daysAgo);
-  return d.toISOString();
+export const OPEN_STATUSES = [
+  "Aberto",
+  "Em análise",
+  "Encaminhado",
+  "Em atendimento",
+  "Reiterado",
+  "Aguardando retorno"
+];
+
+export const PRIORITIES = [
+  {
+    name: "Crítica",
+    slaHours: 4,
+    color: "bg-red-100 text-red-800 border-red-200"
+  },
+  {
+    name: "Alta",
+    slaHours: 24,
+    color: "bg-orange-100 text-orange-800 border-orange-200"
+  },
+  {
+    name: "Média",
+    slaHours: 72,
+    color: "bg-yellow-100 text-yellow-800 border-yellow-200"
+  },
+  {
+    name: "Baixa",
+    slaHours: 168,
+    color: "bg-green-100 text-green-800 border-green-200"
+  }
+];
+
+export const IMPACTS = [
+  "Unidade interditada",
+  "Atendimento suspenso",
+  "Atendimento parcial",
+  "Impacto localizado",
+  "Sem impacto operacional imediato"
+];
+
+export const AGENCIES = [
+  "Águas do Rio",
+  "CEDAE",
+  "Light",
+  "Comlurb",
+  "Fundação Parques e Jardins",
+  "Conservação",
+  "Defesa Civil",
+  "Outro"
+];
+
+export const INFRASTRUCTURE_TREE = {
+  Água: [
+    "Falta d’água",
+    "Baixa pressão",
+    "Cisterna sem abastecimento",
+    "Carro-pipa",
+    "Bomba sem funcionamento",
+    "Vazamento de água limpa"
+  ],
+
+  Saneamento: [
+    "Vazamento de esgoto",
+    "Entupimento",
+    "Extravasamento",
+    "Esgoto entrando na unidade",
+    "Mau cheiro recorrente"
+  ],
+
+  "Luz / Energia": [
+    "Falta de energia",
+    "Queda de fase",
+    "Oscilação elétrica",
+    "Unidade e entorno sem luz",
+    "Impacto em equipamentos"
+  ],
+
+  Poda: [
+    "Árvore com risco",
+    "Galhos sobre rede elétrica",
+    "Queda de galhos",
+    "Poda preventiva",
+    "Obstrução de acesso"
+  ],
+
+  "Conservação Predial": [
+    "Problema estrutural",
+    "Infiltração",
+    "Portão",
+    "Telhado",
+    "Piso",
+    "Instalações internas"
+  ],
+
+  Outros: [
+    "Outros problemas",
+    "Necessita análise"
+  ]
 };
 
-export const PROCESS_TREE = {
-  "Sistemas Internos": {
-    "NetCenter (Chamados)": ["Automação de Captura", "Interface Sici", "Relatórios"],
-    "Escola Segura": ["Permissões", "Cadastro de Ocorrências", "Painel Diretor"]
-  },
-  "Dashboards & BI": {
-    "Frequência Escolar": ["Filtro por CRE", "Exportação Excel"],
-    "Alocação de Professores": ["Visão Consolidada", "Divergências"]
-  },
-  "Bases de Dados": {
-    "Estrutura Sici": ["Sincronização Ativa", "Mapeamento Ids"],
-    "Censo Escolar": ["Carga de Dados", "Limpeza de Duplicados"]
-  }
+export const CATEGORIES = Object.keys(INFRASTRUCTURE_TREE);
+
+const getRetroDate = (daysAgo, hour = 8) => {
+  const d = new Date();
+  d.setDate(d.getDate() - daysAgo);
+  d.setHours(hour, 0, 0, 0);
+  return d.toISOString();
 };
 
 export const INITIAL_TICKETS = [
   {
-    id: 'CHM-1042',
-    title: 'Erro ao abrir relatório no Censo Escolar',
-    sector: 'E/10a.CRE/GRH',
-    category: 'Erro',
-    classification: 'App (PowerApps) > Correções > Censo Escolar',
-    description: 'A tela de fechamento apresenta uma mensagem de estouro de memória ao carregar os dados.',
-    status: 'Em andamento',
-    createdAt: getRetroDate(2),
-    updatedAt: getRetroDate(1),
-    comments: [{ id: 1, author: 'Administrador (CIT)', text: 'Analisando consulta.', date: getRetroDate(1) }, { id: 2, author: 'CRE10', text: 'Ok, no aguardo.', date: getRetroDate(1) }, { id: 3, author: 'Administrador (CIT)', text: 'Poderia adicionar um print de tela, por favor?', date: getRetroDate(1) }],
-    requesterEmails: ['servidor.cre10@rio.rj.gov.br'],
-    notifyUser: true,
-    assignedTo: ['Michele', 'Jorge'],
-    priorityIndex: 1,
-    attachments: []
-  },
-  {
-    id: 'CHM-5012',
-    title: 'Erro na sincronização de dados institucionais SICI',
-    sector: 'E/CTIN',
-    category: 'Erro / Bug',
-    classification: 'Bases de Dados > Estrutura Sici > Sincronização Ativa',
-    description: 'Mudanças estruturais recentes no Sici da prefeitura causaram quebra na rotina noturna de coleta automatizada.',
-    status: 'Em andamento',
-    createdAt: getRetroDate(8), // 8 dias atrás (Dispara Alerta Vermelho de SLA)
-    updatedAt: getRetroDate(2),
-    comments: [],
-    requesterEmails: ['suporte.ctin@rio.rj.gov.br'],
-    notifyUser: true,
-    assignedTo: ['Jorge'],
-    priorityIndex: 1,
+    id: "INF-2026-000245",
+
+    createdAt: getRetroDate(2, 7),
+    updatedAt: getRetroDate(1, 10),
+
+    status: "Em atendimento",
+
+    priority: "Crítica",
+
+    school: {
+      cre: "3ª CRE",
+      code: "0301012",
+      name: "Creche Municipal Tia Andreza",
+      address: "Rua Exemplo, 100",
+      neighborhood: "Méier",
+      phone: "(21)99999-9999"
+    },
+
+    category: "Água",
+    subcategory: "Falta d’água",
+
+    impact: "Atendimento parcial",
+
+    title: "Unidade sem abastecimento de água",
+
+    description:
+      "Ausência de água durante o turno escolar. Cozinha e sanitários afetados.",
+
+    affectedLocation: "Toda unidade",
+
+    externalAction: {
+      agency: "Águas do Rio",
+      protocol: "AR-2026-998877",
+      triggeredAt: getRetroDate(2, 8),
+      responsible: "CTO"
+    },
+
+    resolution: {
+      solutionApplied: "",
+      resolvedAt: null,
+      confirmedBySchool: false,
+      closedAt: null
+    },
+
+    requesterEmails: [
+      "direcao.escola@rio.rj.gov.br"
+    ],
+
     attachments: [],
+
+    comments: [],
+
     history: [
-      { id: 1, type: 'create', message: 'Chamado aberto pelo solicitante corporativo.', date: getRetroDate(8) },
-      { id: 2, type: 'status', message: 'Status alterado de [Aguardando fila] para [Em andamento].', date: getRetroDate(7) },
-      { id: 3, type: 'assign', message: 'Chamado atribuído para Jorge.', date: getRetroDate(7) },
-      { id: 4, type: 'assign', message: 'Raphael adicionado como responsável compartilhado.', date: getRetroDate(2) }
+      {
+        id: 1,
+        type: "create",
+        message: "Chamado aberto pela unidade escolar.",
+        date: getRetroDate(2, 7)
+      },
+      {
+        id: 2,
+        type: "triage",
+        message: "Validação realizada pela CRE.",
+        date: getRetroDate(2, 8)
+      },
+      {
+        id: 3,
+        type: "dispatch",
+        message: "Chamado encaminhado para CTO.",
+        date: getRetroDate(2, 9)
+      }
     ]
-  },
-  {
-    id: 'CHM-5013',
-    title: 'Acesso negado no painel Escola Segura',
-    sector: 'SME',
-    category: 'Permissão',
-    classification: 'Sistemas Internos > Escola Segura > Permissões',
-    description: 'Novos servidores da Gerência de Educação não conseguem carregar o formulário.',
-    status: 'Aguardando fila',
-    createdAt: getRetroDate(4), // 4 dias atrás (Dispara Alerta Amarelo de SLA)
-    updatedAt: getRetroDate(4),
-    comments: [],
-    requesterEmails: ['smegse@rio.rj.gov.br'],
-    notifyUser: false,
-    assignedTo: [],
-    priorityIndex: 1,
-    attachments: [],
-    history: [
-      { id: 1, type: 'create', message: 'Chamado aberto e inserido na Piscina de Entrada.', date: getRetroDate(4) }
-    ]
-  },
-  {
-    id: 'CHM-4014',
-    title: 'Atualização da base de alunos para o BI',
-    sector: 'E/1a.CRE',
-    category: 'Solicitação de Dados',
-    classification: 'Dashboards & BI > Frequência Escolar > Filtro por CRE',
-    description: 'Necessário extrair dump consolidado para validação da equipe de monitoramento.',
-    status: 'Resolvido',
-    createdAt: getRetroDate(1), // Recente
-    updatedAt: getRetroDate(0),
-    comments: [],
-    requesterEmails: ['cre1.educacao@rio.rj.gov.br'],
-    notifyUser: false,
-    assignedTo: ['Gabi'],
-    priorityIndex: 2,
-    attachments: [],
-    history: [
-      { id: 1, type: 'create', message: 'Chamado criado.', date: getRetroDate(1) },
-      { id: 2, type: 'assign', message: 'Atribuído para Gabi.', date: getRetroDate(1) },
-      { id: 3, type: 'status', message: 'Status modificado para [Resolvido].', date: getRetroDate(0) }
-    ]
-  },
-  {
-    id: 'CHM-2055',
-    title: 'Acesso às Trilhas no Power BI',
-    sector: 'E/1a.CRE',
-    category: 'Dúvida',
-    classification: 'Dashboard (BI) > Permissões > Trilhas',
-    description: 'Solicito a liberação de acesso ao painel.',
-    status: 'Aguardando fila',
-    createdAt: getRetroDate(5),
-    updatedAt: getRetroDate(5),
-    comments: [],
-    requesterEmails: ['coordenacao.cre1@rio.rj.gov.br'],
-    notifyUser: true,
-    assignedTo: [],
-    priorityIndex: 2,
-    attachments: []
-  },
-  {
-    id: 'CHM-3081',
-    title: 'Base de Alunos da Zona Oeste',
-    sector: 'SME',
-    category: 'Manutenção',
-    classification: 'Solicitação de Dados > Dados de Alunos',
-    description: 'Extração pontual para a assessoria.',
-    status: 'Resolvido',
-    createdAt: getRetroDate(45),
-    updatedAt: getRetroDate(40),
-    comments: [],
-    requesterEmails: ['dados.sme@rio.rj.gov.br'],
-    notifyUser: true,
-    assignedTo: ['Jorge'],
-    priorityIndex: 1,
-    attachments: []
-  },
-  {
-    id: 'CHM-4012',
-    title: 'Erro de Permissão no NIAP',
-    sector: 'E/2a.CRE',
-    category: 'Erro',
-    classification: 'App (PowerApps) > Permissões > NIAP',
-    description: 'Servidor novo não consegue acessar.',
-    status: 'Resolvido',
-    createdAt: getRetroDate(75),
-    updatedAt: getRetroDate(70),
-    comments: [],
-    requesterEmails: ['rh.cre2@rio.rj.gov.br'],
-    notifyUser: false,
-    assignedTo: ['Gabi'],
-    priorityIndex: 1,
-    attachments: []
-  },
-  {
-    id: 'CHM-4013',
-    title: 'Solicitação de Permissão no Escola Segura',
-    sector: 'GSE',
-    category: 'Permissão',
-    classification: 'App (PowerApps) > Permissões > Escola Segura',
-    description: 'Servidor novo não consegue acessar.',
-    status: 'Aguardando fila',
-    createdAt: getRetroDate(5),
-    updatedAt: getRetroDate(5),
-    comments: [],
-    requesterEmails: ['smegse@rio.rj.gov.br'],
-    notifyUser: false,
-    assignedTo: [],
-    priorityIndex: 1,
-    attachments: []
-  },
-  {
-    id: 'CHM-4014',
-    title: 'Base de Alunos Alura',
-    sector: 'E/2a.CRE',
-    category: 'Solicitação',
-    classification: 'Solicitação de Dados > Dados de Alunos',
-    description: 'Atualização mensal para controle de acesso.',
-    status: 'Em andamento',
-    createdAt: getRetroDate(75),
-    updatedAt: getRetroDate(70),
-    comments: [],
-    requesterEmails: ['rh.cre2@rio.rj.gov.br'],
-    notifyUser: false,
-    assignedTo: ['Gabi'],
-    priorityIndex: 1,
-    attachments: []
-  },
-  {
-    id: 'CHM-4015',
-    title: 'Ajuste no App Comlurb',
-    sector: 'E/CTIN',
-    category: 'Melhoria',
-    classification: 'App (PowerApps) > Melhorias > Comlurb - Registro de Ocorrências',
-    description: 'Ajuste na tela de registro para incluir campo de localização.',
-    status: 'Em andamento',
-    createdAt: getRetroDate(5),
-    updatedAt: getRetroDate(5),
-    comments: [],
-    requesterEmails: ['smectin@rio.rj.gov.br'],
-    notifyUser: false,
-    assignedTo: ['Jorge'],
-    priorityIndex: 1,
-    attachments: []
-  },
+  }
 ];

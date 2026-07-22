@@ -1,136 +1,368 @@
 // ==========================================
-// 7. PAINEL DE MÉTRICAS (ADMIN)
-// Arquivo Futuro Sugerido: src/views/MetricsView.jsx
+// DASHBOARD DE INFRAESTRUTURA ESCOLAR
+// src/views/MetricsView.jsx
 // ==========================================
 
-import React, { useMemo } from 'react';
-import { CATEGORIES } from '../config/constants';
-import { 
-  BarChart2, 
-  TrendingUp, 
-  CheckCircle, 
-  Clock, 
-  AlertCircle, 
-  PieChart 
-} from 'lucide-react';
+import React, { useMemo } from "react";
 
-export default function MetricsView ({ tickets, onNavigateWithFilter }) {
-  const stats = useMemo(() => {
+import {
+  CATEGORIES,
+  CRES,
+  PRIORITIES,
+  STATUS,
+  AGENCIES
+} from "../config/constants";
+
+import { getSlaInfo } from "../utils/helpers";
+
+import {
+  BarChart3,
+  ClipboardList,
+  AlertTriangle,
+  CheckCircle2,
+  Clock3,
+  School,
+  Building2,
+  Wrench,
+  Flag,
+  Layers,
+  TrendingUp
+} from "lucide-react";
+
+export default function MetricsView({
+  tickets,
+  onNavigateWithFilter
+}) {
+
+  const metrics = useMemo(() => {
+
     const total = tickets.length;
-    const open = tickets.filter(t => t.status === 'Aguardando fila').length;
-    const progress = tickets.filter(t => t.status === 'Em andamento').length;
-    const resolved = tickets.filter(t => t.status === 'Resolvido' || t.status === 'Encerrado').length;
 
-    const categoriesCount = tickets.reduce((acc, t) => {
-      acc[t.category] = (acc[t.category] || 0) + 1;
-      return acc;
-    }, {});
+    const pending = tickets.filter(
+      t =>
+        ![
+          "Resolvido",
+          "Encerrado",
+          "Cancelado"
+        ].includes(t.status)
+    ).length;
 
-    return { total, open, progress, resolved, categoriesCount };
-  }, [tickets]);
+    const resolved = tickets.filter(
+      t =>
+        t.status === "Resolvido" ||
+        t.status === "Encerrado"
+    ).length;
 
-  const lineChartData = useMemo(() => {
-    const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun'];
-    const data = [0, 0, 0, 0, 0, 0]; 
-    tickets.forEach(t => {
-      if (t.status === 'Resolvido' || t.status === 'Encerrado') {
-        const monthIndex = new Date(t.createdAt).getMonth(); 
-        if(monthIndex >= 0 && monthIndex < 6) data[monthIndex]++;
+    const slaExpired = tickets.filter(t => {
+      const sla = getSlaInfo(
+        t.createdAt,
+        t.priority,
+        t.status
+      );
+
+      return sla?.type === "expired";
+    }).length;
+
+    const byStatus = {};
+    const byCategory = {};
+    const byPriority = {};
+    const byCre = {};
+    const byAgency = {};
+    const bySchool = {};
+
+    tickets.forEach(ticket => {
+
+      byStatus[ticket.status] =
+        (byStatus[ticket.status] || 0) + 1;
+
+      if (ticket.category) {
+        byCategory[ticket.category] =
+          (byCategory[ticket.category] || 0) + 1;
       }
+
+      if (ticket.priority) {
+        byPriority[ticket.priority] =
+          (byPriority[ticket.priority] || 0) + 1;
+      }
+
+      const cre =
+        ticket?.school?.cre ||
+        ticket?.sector ||
+        "Não informada";
+
+      byCre[cre] =
+        (byCre[cre] || 0) + 1;
+
+      const agency =
+        ticket?.externalAction?.agency ||
+        "Sem acionamento";
+
+      byAgency[agency] =
+        (byAgency[agency] || 0) + 1;
+
+      const school =
+        ticket?.school?.name ||
+        "Unidade não informada";
+
+      bySchool[school] =
+        (bySchool[school] || 0) + 1;
     });
-    const maxVal = Math.max(...data, 5); 
-    const points = data.map((val, idx) => `${(idx / 5) * 100},${100 - (val / maxVal) * 100}`).join(' ');
-    return { data, points, maxVal, months };
+
+    const recurringCount =
+      tickets.filter(
+        t => t?.recurrence?.isRecurring
+      ).length;
+
+    return {
+      total,
+      pending,
+      resolved,
+      slaExpired,
+      recurringCount,
+      byStatus,
+      byCategory,
+      byPriority,
+      byCre,
+      byAgency,
+      bySchool
+    };
+
   }, [tickets]);
+
+  const renderHorizontalChart = (
+    dataObj,
+    colorClass = "bg-[#13335a]"
+  ) => {
+
+    const entries = Object.entries(dataObj);
+
+    const max =
+      Math.max(
+        ...entries.map(item => item[1]),
+        1
+      );
+
+    return (
+      <div className="space-y-3">
+        {entries.map(([label, value]) => {
+
+          const width =
+            (value / max) * 100;
+
+          return (
+            <div key={label}>
+              <div className="flex justify-between text-sm mb-1">
+                <span className="text-slate-700 truncate mr-3">
+                  {label}
+                </span>
+
+                <span className="font-semibold text-slate-800">
+                  {value}
+                </span>
+              </div>
+
+              <div className="w-full h-2 bg-slate-100 rounded overflow-hidden">
+                <div
+                  className={`${colorClass} h-full`}
+                  style={{ width: `${width}%` }}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const schoolRanking = Object.entries(
+    metrics.bySchool
+  )
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10);
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
-      <h2 className="text-2xl font-bold text-slate-800 flex items-center">
-        <BarChart2 className="mr-2 text-[#13335a]" /> Dashboard de Desempenho
-      </h2>
+    <div className="space-y-6">
 
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        {[
-          { label: 'Total', val: stats.total, color: 'text-[#13335a]', bg: 'bg-white', filter: '' },
-          { label: 'Aguardando', val: stats.open, color: 'text-red-700', bg: 'bg-red-50', filter: 'Aguardando fila' },
-          { label: 'Em Andamento', val: stats.progress, color: 'text-yellow-700', bg: 'bg-yellow-50', filter: 'Em andamento' },
-          { label: 'Resolvidos', val: stats.resolved, color: 'text-green-700', bg: 'bg-green-50', filter: 'Resolvido' }
-        ].map(card => (
-          <button 
-            key={card.label} 
-            onClick={() => onNavigateWithFilter(card.filter)}
-            className={`${card.bg} p-4 rounded-xl border border-slate-200 shadow-sm text-center hover:shadow-md hover:scale-105 transition transform cursor-pointer`}
-          >
-            <p className={`text-xs font-semibold uppercase opacity-80 ${card.color}`}>{card.label}</p>
-            <p className={`text-3xl font-extrabold mt-2 ${card.color}`}>{card.val}</p>
-          </button>
-        ))}
+      {/* CABEÇALHO */}
+      <div>
+        <h2 className="text-2xl font-bold text-slate-800 flex items-center">
+          <BarChart3 className="mr-2 text-[#13335a]" />
+          Dashboard de Infraestrutura Escolar
+        </h2>
+
+        <p className="text-sm text-slate-500 mt-1">
+          Visão operacional e executiva das ocorrências da rede.
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col items-center">
-          <h3 className="text-sm font-bold text-slate-700 mb-6 uppercase tracking-wider self-start flex items-center">
-            <PieChart className="w-4 h-4 mr-2 text-[#13335a]" /> Distribuição
-          </h3>
-          <div className="relative w-48 h-48 rounded-full mb-6" style={{
-            background: `conic-gradient(
-              #ef4444 0% ${stats.total ? (stats.open/stats.total)*100 : 0}%, 
-              #f59e0b 0% ${stats.total ? ((stats.open+stats.progress)/stats.total)*100 : 0}%, 
-              #10b981 0% 100%
-            )`
-          }}>
-            <div className="absolute inset-4 bg-white rounded-full flex items-center justify-center">
-              <span className="text-xl font-bold text-slate-700">{stats.total}</span>
-            </div>
+      {/* CARDS PRINCIPAIS */}
+      <div className="grid grid-cols-2 xl:grid-cols-5 gap-4">
+
+        <button
+          onClick={() =>
+            onNavigateWithFilter?.("")
+          }
+          className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm text-center hover:shadow-md transition"
+        >
+          <ClipboardList className="mx-auto mb-2 text-[#13335a]" />
+          <div className="text-xs text-slate-500">
+            Total
           </div>
-          <div className="flex gap-4 text-xs font-semibold text-slate-600">
-            <span className="flex items-center"><span className="w-3 h-3 bg-red-500 rounded-full mr-1"></span> Fila</span>
-            <span className="flex items-center"><span className="w-3 h-3 bg-yellow-500 rounded-full mr-1"></span> Andam.</span>
-            <span className="flex items-center"><span className="w-3 h-3 bg-green-500 rounded-full mr-1"></span> Concluído</span>
+          <div className="text-3xl font-bold text-[#13335a]">
+            {metrics.total}
+          </div>
+        </button>
+
+        <button
+          onClick={() =>
+            onNavigateWithFilter?.("Aberto")
+          }
+          className="bg-blue-50 p-5 rounded-xl border border-blue-100 text-center"
+        >
+          <Clock3 className="mx-auto mb-2 text-blue-700" />
+          <div className="text-xs text-blue-700">
+            Pendentes
+          </div>
+          <div className="text-3xl font-bold text-blue-800">
+            {metrics.pending}
+          </div>
+        </button>
+
+        <button
+          onClick={() =>
+            onNavigateWithFilter?.("Resolvido")
+          }
+          className="bg-green-50 p-5 rounded-xl border border-green-100 text-center"
+        >
+          <CheckCircle2 className="mx-auto mb-2 text-green-700" />
+          <div className="text-xs text-green-700">
+            Resolvidos
+          </div>
+          <div className="text-3xl font-bold text-green-800">
+            {metrics.resolved}
+          </div>
+        </button>
+
+        <div className="bg-red-50 p-5 rounded-xl border border-red-100 text-center">
+          <AlertTriangle className="mx-auto mb-2 text-red-700" />
+          <div className="text-xs text-red-700">
+            SLA Vencido
+          </div>
+          <div className="text-3xl font-bold text-red-800">
+            {metrics.slaExpired}
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-          <h3 className="text-sm font-bold text-slate-700 mb-4 uppercase tracking-wider">Por Categoria</h3>
-          <div className="space-y-3">
-            {CATEGORIES.map(category => {
-              const count = stats.categoriesCount[category] || 0;
-              const percent = stats.total > 0 ? Math.round((count / stats.total) * 100) : 0;
-              return (
-                <div key={category}>
-                  <div className="flex justify-between text-xs font-medium text-slate-600 mb-1">
-                    <span>{category} ({count})</span>
-                    <span>{percent}%</span>
-                  </div>
-                  <div className="w-full bg-slate-100 rounded-full h-2">
-                    <div className="bg-[#13335a] h-2 rounded-full" style={{ width: `${percent}%` }}></div>
-                  </div>
+        <div className="bg-purple-50 p-5 rounded-xl border border-purple-100 text-center">
+          <TrendingUp className="mx-auto mb-2 text-purple-700" />
+          <div className="text-xs text-purple-700">
+            Recorrências
+          </div>
+          <div className="text-3xl font-bold text-purple-800">
+            {metrics.recurringCount}
+          </div>
+        </div>
+
+      </div>
+
+      {/* GRID CENTRAL */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+          <h3 className="font-bold text-slate-800 mb-4 flex items-center">
+            <School className="w-4 h-4 mr-2 text-[#13335a]" />
+            Distribuição por CRE
+          </h3>
+
+          {renderHorizontalChart(
+            metrics.byCre,
+            "bg-blue-500"
+          )}
+        </div>
+
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+          <h3 className="font-bold text-slate-800 mb-4 flex items-center">
+            <Layers className="w-4 h-4 mr-2 text-[#13335a]" />
+            Distribuição por Categoria
+          </h3>
+
+          {renderHorizontalChart(
+            metrics.byCategory,
+            "bg-emerald-500"
+          )}
+        </div>
+
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+          <h3 className="font-bold text-slate-800 mb-4 flex items-center">
+            <Flag className="w-4 h-4 mr-2 text-[#13335a]" />
+            Distribuição por Prioridade
+          </h3>
+
+          {renderHorizontalChart(
+            metrics.byPriority,
+            "bg-orange-500"
+          )}
+        </div>
+
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+          <h3 className="font-bold text-slate-800 mb-4 flex items-center">
+            <ClipboardList className="w-4 h-4 mr-2 text-[#13335a]" />
+            Distribuição por Status
+          </h3>
+
+          {renderHorizontalChart(
+            metrics.byStatus,
+            "bg-purple-500"
+          )}
+        </div>
+      </div>
+
+      {/* ÓRGÃOS */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+        <h3 className="font-bold text-slate-800 mb-4 flex items-center">
+          <Wrench className="w-4 h-4 mr-2 text-[#13335a]" />
+          Acionamentos por Órgão / Concessionária
+        </h3>
+
+        {renderHorizontalChart(
+          metrics.byAgency,
+          "bg-indigo-500"
+        )}
+      </div>
+
+      {/* TOP ESCOLAS */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+        <h3 className="font-bold text-slate-800 mb-4 flex items-center">
+          <Building2 className="w-4 h-4 mr-2 text-[#13335a]" />
+          Unidades com Mais Ocorrências
+        </h3>
+
+        <div className="space-y-3">
+          {schoolRanking.map(
+            ([school, total], index) => (
+              <div
+                key={school}
+                className="flex items-center justify-between bg-slate-50 border border-slate-100 rounded-lg px-4 py-3"
+              >
+                <div className="flex items-center">
+                  <span className="w-8 h-8 rounded-full bg-[#13335a] text-white flex items-center justify-center text-xs font-bold mr-3">
+                    {index + 1}
+                  </span>
+
+                  <span className="font-medium text-slate-700">
+                    {school}
+                  </span>
                 </div>
-              );
-            })}
-          </div>
-        </div>
 
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-          <h3 className="text-sm font-bold text-slate-700 mb-6 uppercase tracking-wider flex items-center">
-             <TrendingUp className="w-4 h-4 mr-2 text-[#13335a]"/> Resoluções (Semestre)
-          </h3>
-          <div className="relative h-40 w-full mt-4">
-            <svg viewBox="0 -10 100 120" className="w-full h-full overflow-visible" preserveAspectRatio="none">
-              <line x1="0" y1="0" x2="100" y2="0" stroke="#f1f5f9" strokeWidth="1" />
-              <line x1="0" y1="50" x2="100" y2="50" stroke="#f1f5f9" strokeWidth="1" />
-              <line x1="0" y1="100" x2="100" y2="100" stroke="#f1f5f9" strokeWidth="1" />
-              <polyline points={lineChartData.points} fill="none" stroke="#66b6e3" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-              {lineChartData.data.map((val, idx) => (
-                <circle key={idx} cx={(idx / 5) * 100} cy={100 - (val / lineChartData.maxVal) * 100} r="2.5" fill="#13335a" />
-              ))}
-            </svg>
-            <div className="flex justify-between mt-2 text-[10px] font-bold text-slate-400">
-              {lineChartData.months.map(m => <span key={m}>{m}</span>)}
-            </div>
-          </div>
+                <span className="font-bold text-[#13335a]">
+                  {total}
+                </span>
+              </div>
+            )
+          )}
         </div>
       </div>
+
     </div>
   );
-};
+}
