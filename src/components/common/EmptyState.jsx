@@ -1,6 +1,6 @@
 // ==========================================
 // EMPTY STATE
-// src/components/EmptyState.jsx
+// src/components/common/EmptyState.jsx
 // ==========================================
 
 import React from "react";

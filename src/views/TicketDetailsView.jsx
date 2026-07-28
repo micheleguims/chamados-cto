@@ -15,18 +15,14 @@ import {
 import {
   getStatusColor,
   getPriorityColor,
-  getSlaInfo,
-  formatCommentDate
+  getSlaInfo
 } from "../utils/helpers";
 
-import Badge from "../components/Badge";
+import Badge from "../components/common/Badge";
 
 import {
   X,
-  Send,
   Paperclip,
-  MessageSquare,
-  User,
   Trash2,
   ImageIcon,
   FileIcon,
@@ -37,14 +33,11 @@ import {
   School,
   MapPin,
   Phone,
-  ClipboardList,
   Clock,
-  Siren,
   Wrench,
   CheckCircle,
   RotateCcw,
   ShieldAlert,
-  Building2,
   Save,
   FileText,
   Link,
@@ -61,9 +54,9 @@ export default function TicketDetailsView({
 }) {
   const fileInputRef = useRef(null);
 
-  const [newComment, setNewComment] = useState("");
   const [previewFile, setPreviewFile] = useState(null);
   const [fileToDelete, setFileToDelete] = useState(null);
+  const [feedbackMessage, setFeedbackMessage] = useState("");
 
   const [externalDraft, setExternalDraft] = useState({
     agency: ticket?.externalAction?.agency || "",
@@ -97,45 +90,16 @@ export default function TicketDetailsView({
   const isCre = role === "cre";
   const isCor = role === "cor";
   const isCto = role === "cto";
-  const isGestao =
-    role === "gestão" ||
-    role === "gestao" ||
-    role === "gestão executiva";
   const isSchool = role === "escola";
 
-  const canOperate =
-    isAdmin ||
-    isCre ||
-    isCor ||
-    isCto ||
-    isGestao;
-
-  const canEditTriage =
-    isAdmin ||
-    isCre ||
-    isCor ||
-    isCto;
-
-  const canEditExternalAction =
-    isAdmin ||
-    isCto ||
-    isCor ||
-    isCre;
-
-  const canConfirmSchoolResolution =
-    isAdmin ||
-    isSchool ||
-    isCre;
-
-  const canCloseTicket =
-    isAdmin ||
-    isCre ||
-    isCto ||
-    isCor;
+  const canOperate = isAdmin || isCre || isCor || isCto;
+  const canEditTriage = isAdmin || isCre || isCor || isCto;
+  const canEditExternalAction = isAdmin || isCto || isCor || isCre;
+  const canConfirmSchoolResolution = isAdmin || isSchool || isCre;
+  const canCloseTicket = isAdmin || isCre || isCto || isCor;
 
   const localHistory = ticket?.history || [];
   const attachments = ticket?.attachments || [];
-  const comments = ticket?.comments || [];
   const resolution = ticket?.resolution || {};
   const externalAction = ticket?.externalAction || {};
   const recurrence = ticket?.recurrence || {};
@@ -165,6 +129,14 @@ export default function TicketDetailsView({
     message,
     date: new Date().toISOString()
   });
+
+  const showFeedback = (message) => {
+    setFeedbackMessage(message);
+
+    setTimeout(() => {
+      setFeedbackMessage("");
+    }, 3000);
+  };
 
   const updateTicket = (partialTicket, historyEntry = null) => {
     const updatedTicket = {
@@ -208,39 +180,6 @@ export default function TicketDetailsView({
     return `${days} ${days === 1 ? "dia" : "dias"} aberto`;
   };
 
-  const handleAddComment = (e) => {
-    e.preventDefault();
-
-    if (!newComment.trim()) return;
-
-    const now = new Date().toISOString();
-
-    const newCommentObj = {
-      id: Date.now(),
-      author:
-        currentUser?.username ||
-        currentUser?.name ||
-        currentUser?.role ||
-        "Usuário",
-      text: newComment.trim(),
-      date: now
-    };
-
-    const logEntry = createHistoryEntry(
-      "comment",
-      `Comentário adicionado por ${newCommentObj.author}.`
-    );
-
-    updateTicket(
-      {
-        comments: [...comments, newCommentObj]
-      },
-      logEntry
-    );
-
-    setNewComment("");
-  };
-
   const handleStatusChange = (newStatus) => {
     if (newStatus === ticket.status) return;
 
@@ -268,6 +207,7 @@ export default function TicketDetailsView({
     }
 
     updateTicket(partialUpdate, logEntry);
+    showFeedback(`Status alterado para ${newStatus}.`);
   };
 
   const handlePriorityChange = (newPriority) => {
@@ -288,6 +228,8 @@ export default function TicketDetailsView({
       },
       logEntry
     );
+
+    showFeedback("Prioridade atualizada com sucesso.");
   };
 
   const handleImpactChange = (newImpact) => {
@@ -308,6 +250,8 @@ export default function TicketDetailsView({
       },
       logEntry
     );
+
+    showFeedback("Impacto atualizado com sucesso.");
   };
 
   const handleSaveExternalAction = () => {
@@ -337,6 +281,8 @@ export default function TicketDetailsView({
       },
       logEntry
     );
+
+    showFeedback("Acionamento externo salvo com sucesso.");
   };
 
   const handleRegisterReiteration = () => {
@@ -353,6 +299,8 @@ export default function TicketDetailsView({
       },
       logEntry
     );
+
+    showFeedback("Reiteração registrada com sucesso.");
   };
 
   const handleSaveRecurrence = () => {
@@ -378,6 +326,8 @@ export default function TicketDetailsView({
       },
       logEntry
     );
+
+    showFeedback("Recorrência salva com sucesso.");
   };
 
   const handleSaveResolution = () => {
@@ -407,6 +357,8 @@ export default function TicketDetailsView({
       },
       logEntry
     );
+
+    showFeedback("Resolução salva com sucesso.");
   };
 
   const handleMarkAsResolved = () => {
@@ -445,6 +397,8 @@ export default function TicketDetailsView({
       ...prev,
       resolvedAt: prev.resolvedAt || now.slice(0, 16)
     }));
+
+    showFeedback("Chamado marcado como resolvido.");
   };
 
   const handleConfirmBySchool = () => {
@@ -477,6 +431,8 @@ export default function TicketDetailsView({
       ...prev,
       confirmedBySchool: true
     }));
+
+    showFeedback("Confirmação da escola registrada.");
   };
 
   const handleCloseTicket = () => {
@@ -546,6 +502,8 @@ export default function TicketDetailsView({
       closedAt: now.slice(0, 16),
       closedBy: closer
     }));
+
+    showFeedback("Chamado encerrado com sucesso.");
   };
 
   const handleCancelTicket = () => {
@@ -562,6 +520,8 @@ export default function TicketDetailsView({
       },
       logEntry
     );
+
+    showFeedback("Chamado cancelado.");
   };
 
   const handleReopenTicket = () => {
@@ -578,6 +538,8 @@ export default function TicketDetailsView({
       },
       logEntry
     );
+
+    showFeedback("Chamado reaberto com sucesso.");
   };
 
   const handleFileUpload = (e) => {
@@ -610,6 +572,8 @@ export default function TicketDetailsView({
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
+
+    showFeedback("Arquivo anexado com sucesso.");
   };
 
   const confirmDeleteFile = (id) => {
@@ -632,21 +596,27 @@ export default function TicketDetailsView({
     );
 
     setFileToDelete(null);
+    showFeedback("Arquivo removido com sucesso.");
   };
 
   return (
     <>
+      {feedbackMessage && (
+        <div className="fixed top-4 right-4 z-50 bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg shadow-lg text-sm font-medium">
+          {feedbackMessage}
+        </div>
+      )}
+
       <div className="max-w-7xl mx-auto flex flex-col xl:flex-row gap-6">
-        {/* COLUNA PRINCIPAL */}
         <div className="flex-1 space-y-6">
           <button
+            type="button"
             onClick={onBack}
             className="text-[#13335a] hover:text-[#66b6e3] transition flex items-center text-sm font-medium"
           >
             ← Voltar para listagem
           </button>
 
-          {/* CABEÇALHO DO CHAMADO */}
           <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
             <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-5">
               <div>
@@ -703,7 +673,6 @@ export default function TicketDetailsView({
               </div>
             )}
 
-            {/* DADOS DA UNIDADE */}
             <div className="p-5 bg-slate-50 rounded-xl border border-slate-200 mb-5">
               <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider mb-4 flex items-center">
                 <School className="w-4 h-4 mr-2 text-[#13335a]" />
@@ -757,7 +726,6 @@ export default function TicketDetailsView({
               </div>
             </div>
 
-            {/* CLASSIFICAÇÃO */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 py-4 border-y border-slate-100 text-sm">
               <div>
                 <span className="block text-slate-500">Categoria</span>
@@ -800,15 +768,6 @@ export default function TicketDetailsView({
                   {ticket.scope || "-"}
                 </span>
               </div>
-
-              <div className="md:col-span-2">
-                <span className="block text-slate-500">
-                  E-mails de notificação
-                </span>
-                <span className="font-semibold text-[#13335a]">
-                  {(ticket.requesterEmails || []).join(", ") || "Nenhum"}
-                </span>
-              </div>
             </div>
 
             <div className="mt-5">
@@ -823,7 +782,6 @@ export default function TicketDetailsView({
             </div>
           </div>
 
-          {/* TRIGEM / OPERAÇÃO */}
           {canEditTriage && (
             <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-6">
               <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider flex items-center">
@@ -931,7 +889,6 @@ export default function TicketDetailsView({
             </div>
           )}
 
-          {/* ACIONAMENTO EXTERNO */}
           <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-5">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
               <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider flex items-center">
@@ -1075,7 +1032,6 @@ export default function TicketDetailsView({
             )}
           </div>
 
-          {/* RESOLUÇÃO E ENCERRAMENTO */}
           <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-5">
             <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider flex items-center">
               <CheckCircle2 className="w-4 h-4 mr-2 text-[#13335a]" />
@@ -1099,9 +1055,7 @@ export default function TicketDetailsView({
                       : "text-amber-700"
                   }`}
                 >
-                  {resolution.confirmedBySchool
-                    ? "Confirmado"
-                    : "Pendente"}
+                  {resolution.confirmedBySchool ? "Confirmado" : "Pendente"}
                 </span>
               </div>
 
@@ -1265,7 +1219,6 @@ export default function TicketDetailsView({
             )}
           </div>
 
-          {/* RECORRÊNCIA */}
           {canEditTriage && (
             <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-4">
               <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider flex items-center">
@@ -1321,7 +1274,6 @@ export default function TicketDetailsView({
             </div>
           )}
 
-          {/* ANEXOS */}
           <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider flex items-center">
@@ -1330,6 +1282,7 @@ export default function TicketDetailsView({
               </h3>
 
               <button
+                type="button"
                 onClick={() => fileInputRef.current?.click()}
                 className="text-xs bg-[#13335a]/10 text-[#13335a] hover:bg-[#13335a]/20 px-3 py-1.5 rounded font-semibold transition"
               >
@@ -1372,6 +1325,7 @@ export default function TicketDetailsView({
 
                     <div className="flex items-center gap-1">
                       <button
+                        type="button"
                         onClick={() => setPreviewFile(att)}
                         className="p-1.5 text-slate-400 hover:text-[#13335a] bg-white border rounded shadow-sm transition"
                         title="Visualizar/Baixar"
@@ -1380,6 +1334,7 @@ export default function TicketDetailsView({
                       </button>
 
                       <button
+                        type="button"
                         onClick={() => setFileToDelete(att)}
                         className="p-1.5 text-slate-400 hover:text-red-600 bg-white border rounded shadow-sm transition"
                         title="Excluir"
@@ -1393,7 +1348,6 @@ export default function TicketDetailsView({
             )}
           </div>
 
-          {/* HISTÓRICO */}
           <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-4">
             <h3 className="font-bold text-slate-800 text-sm border-b pb-2 flex items-center uppercase tracking-wider">
               <History className="w-4 h-4 mr-2 text-[#13335a]" />
@@ -1423,89 +1377,8 @@ export default function TicketDetailsView({
             )}
           </div>
         </div>
-
-        {/* COLUNA LATERAL - INTERAÇÕES */}
-        <div className="w-full xl:w-96 flex flex-col h-[560px] xl:h-[calc(100vh-140px)] xl:sticky xl:top-4">
-          <div className="bg-white rounded-xl shadow-sm border border-slate-200 flex-1 flex flex-col overflow-hidden">
-            <div className="p-4 border-b bg-slate-50 flex items-center">
-              <MessageSquare className="w-5 h-5 mr-2 text-[#13335a]" />
-              <h3 className="font-semibold text-slate-800">Interações</h3>
-            </div>
-
-            <div className="flex-1 p-4 overflow-y-auto space-y-4 bg-slate-50">
-              {comments.length === 0 ? (
-                <div className="text-center text-xs text-slate-400 italic mt-10">
-                  Nenhuma interação registrada.
-                </div>
-              ) : (
-                comments.map(comment => {
-                  const currentName =
-                    currentUser?.username ||
-                    currentUser?.name ||
-                    currentUser?.role;
-
-                  const isUser = comment.author === currentName;
-
-                  return (
-                    <div
-                      key={comment.id}
-                      className={`flex ${
-                        isUser ? "justify-end" : "justify-start"
-                      }`}
-                    >
-                      <div
-                        className={`max-w-[85%] p-3 shadow-sm ${
-                          isUser
-                            ? "bg-[#13335a] text-white rounded-2xl rounded-tr-sm"
-                            : "bg-white border border-slate-200 text-slate-700 rounded-2xl rounded-tl-sm"
-                        }`}
-                      >
-                        <div
-                          className={`flex justify-between items-center mb-1 gap-3 ${
-                            isUser ? "text-[#66b6e3]" : "text-slate-500"
-                          }`}
-                        >
-                          <span className="font-semibold text-xs flex items-center">
-                            <User className="w-3 h-3 mr-1" />
-                            {comment.author}
-                          </span>
-
-                          <span className="text-[10px] opacity-80">
-                            {formatCommentDate(comment.date)}
-                          </span>
-                        </div>
-
-                        <p className="text-sm">{comment.text}</p>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-
-            <form onSubmit={handleAddComment} className="p-4 bg-white border-t">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Escreva uma atualização..."
-                  className="flex-1 p-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#66b6e3]"
-                  value={newComment}
-                  onChange={e => setNewComment(e.target.value)}
-                />
-
-                <button
-                  type="submit"
-                  className="p-2 bg-[#13335a] text-white rounded-lg hover:opacity-90"
-                >
-                  <Send className="w-4 h-4" />
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
       </div>
 
-      {/* MODAL VISUALIZADOR DE ARQUIVOS */}
       {previewFile && (
         <div className="fixed inset-0 z-50 bg-slate-900/80 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
@@ -1515,6 +1388,7 @@ export default function TicketDetailsView({
               </h3>
 
               <button
+                type="button"
                 onClick={() => setPreviewFile(null)}
                 className="p-2 bg-slate-200 hover:bg-red-500 hover:text-white rounded-full transition"
               >
@@ -1559,7 +1433,6 @@ export default function TicketDetailsView({
         </div>
       )}
 
-      {/* MODAL CONFIRMAÇÃO DE EXCLUSÃO */}
       {fileToDelete && (
         <div className="fixed inset-0 z-50 bg-slate-900/50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden">
@@ -1570,7 +1443,7 @@ export default function TicketDetailsView({
 
             <div className="p-4">
               <p className="text-sm text-slate-600 mb-6">
-                Tem certeza que deseja remover o arquivo{" "}
+                Tem certeza que deseja remover o arquivo {" "}
                 <strong>{fileToDelete.name}</strong> deste chamado?
               </p>
 

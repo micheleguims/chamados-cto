@@ -1,6 +1,6 @@
 // ==========================================
 // TICKET CARD
-// src/components/TicketCard.jsx
+// src/components/common/TicketCard.jsx
 // ==========================================
 
 import React from "react";
@@ -21,7 +21,7 @@ import {
   getStatusColor,
   getPriorityColor,
   getSlaInfo
-} from "../utils/helpers";
+} from "../../utils/helpers";
 
 export default function TicketCard({
   ticket,

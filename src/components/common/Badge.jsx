@@ -1,6 +1,6 @@
 // ==========================================
 // BADGE
-// src/components/Badge.jsx
+// src/components/common/Badge.jsx
 // ==========================================
 
 import React from "react";

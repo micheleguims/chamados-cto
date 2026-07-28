@@ -19,8 +19,8 @@ import {
   getSlaInfo
 } from "../utils/helpers";
 
-import Badge from "../components/Badge";
-import EmptyState from "../components/EmptyState";
+import Badge from "../components/common/Badge";
+import EmptyState from "../components/common/EmptyState";
 
 import {
   Search,
@@ -52,6 +52,31 @@ export default function TicketList({
   const [filterProtocol, setFilterProtocol] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
+
+  const activeFilterCount = useMemo(() => {
+    return [
+      searchTerm,
+      filterCre,
+      filterCategory,
+      filterPriority,
+      filterProtocol,
+      filterStatus,
+      startDate,
+      endDate
+    ].filter(Boolean).length;
+  }, [
+    searchTerm,
+    filterCre,
+    filterCategory,
+    filterPriority,
+    filterProtocol,
+    filterStatus,
+    startDate,
+    endDate
+  ]);
+
+  const hasActiveFilters = activeFilterCount > 0;
 
   const role = currentUser?.role || "";
   const currentUserCre = currentUser?.cre || currentUser?.sector || "";
@@ -59,9 +84,6 @@ export default function TicketList({
 
   const isGlobalProfile = [
     "admin",
-    "gestão",
-    "gestao",
-    "gestão executiva",
     "cor",
     "cto"
   ].includes(role.toLowerCase());
@@ -263,6 +285,7 @@ export default function TicketList({
     setStartDate("");
     setEndDate("");
     setFilterStatus("");
+    setShowFilters(false);
   };
 
   const formatDateTime = (dateString) => {
@@ -296,7 +319,7 @@ export default function TicketList({
 
   return (
     <div className="space-y-6">
-      {/* FRAME INFORMATIVO */}
+      {/* FRAME INFORMATIVO / ABAS */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
         <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
           <div>
@@ -306,234 +329,289 @@ export default function TicketList({
               ) : (
                 <ClipboardList className="w-5 h-5 mr-2 text-[#13335a]" />
               )}
-
-              {historyMode
-                ? "Histórico Completo de Chamados"
-                : "Chamados Abertos e Pendentes"}
+              Chamados de Infraestrutura
             </h4>
 
             <p className="text-sm text-slate-500 mt-1">
-              Acompanhe ocorrências de infraestrutura por unidade escolar,
-              CRE, prioridade, status, protocolo e prazo de atendimento.
+              Acompanhe ocorrências por unidade escolar, CRE, prioridade, status,
+              protocolo e prazo de atendimento.
             </p>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-2">
+            {/* ABAS DE VISUALIZAÇÃO */}
+            <div className="flex bg-slate-100 border border-slate-200 rounded-lg p-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setHistoryMode(false);
+                  setFilterStatus("");
+                }}
+                className={`px-3 py-2 rounded-md text-xs font-semibold transition flex items-center ${
+                  !historyMode
+                    ? "bg-[#13335a] text-white shadow-sm"
+                    : "text-slate-600 hover:bg-white"
+                }`}
+              >
+                <ClipboardList className="w-4 h-4 mr-1.5" />
+                Pendentes
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setHistoryMode(true);
+                  setFilterStatus("");
+                }}
+                className={`px-3 py-2 rounded-md text-xs font-semibold transition flex items-center ${
+                  historyMode
+                    ? "bg-[#13335a] text-white shadow-sm"
+                    : "text-slate-600 hover:bg-white"
+                }`}
+              >
+                <History className="w-4 h-4 mr-1.5" />
+                Histórico
+              </button>
+            </div>
+
+            {/* BOTÃO FILTROS */}
             <button
               type="button"
-              onClick={() => {
-                setHistoryMode(!historyMode);
-                setFilterStatus("");
-              }}
-              className={`px-4 py-2 rounded-lg text-xs font-semibold transition flex items-center justify-center ${
-                historyMode
-                  ? "bg-slate-200 text-slate-700 hover:bg-slate-300"
-                  : "bg-[#13335a] text-white hover:opacity-90"
+              onClick={() => setShowFilters(prev => !prev)}
+              className={`px-4 py-2 rounded-lg text-xs font-semibold transition flex items-center justify-center border ${
+                showFilters || hasActiveFilters
+                  ? "bg-blue-50 text-[#13335a] border-blue-200"
+                  : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
               }`}
             >
-              <History className="w-4 h-4 mr-2" />
-
-              {historyMode
-                ? "Voltar aos Pendentes"
-                : "Ver Histórico Completo"}
+              <SlidersHorizontal className="w-4 h-4 mr-2" />
+              {hasActiveFilters ? `Filtros (${activeFilterCount})` : "Filtros"}
             </button>
 
+            {/* LIMPAR FILTROS */}
             <button
               type="button"
               onClick={clearFilters}
               className="px-4 py-2 rounded-lg text-xs font-semibold transition flex items-center justify-center bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
             >
               <FilterX className="w-4 h-4 mr-2" />
-              Limpar filtros
+              Limpar
             </button>
           </div>
         </div>
+
+        {/* RESUMO DA VISUALIZAÇÃO */}
+        <div className="mt-4 flex flex-col md:flex-row md:items-center md:justify-between gap-2 border-t border-slate-100 pt-4">
+          <div className="text-xs text-slate-500">
+            Visualização atual:{" "}
+            <strong className="text-[#13335a]">
+              {historyMode ? "Histórico completo" : "Chamados abertos e pendentes"}
+            </strong>
+          </div>
+
+          <div className="text-xs text-slate-500">
+            Exibindo{" "}
+            <strong className="text-[#13335a]">{displayedTickets.length}</strong>{" "}
+            de{" "}
+            <strong className="text-[#13335a]">{filteredTickets.length}</strong>{" "}
+            chamado(s) encontrado(s).
+          </div>
+        </div>
+
+        {hasActiveFilters && !showFilters && (
+          <div className="mt-3 text-xs text-blue-700 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+            Existem filtros ativos. Clique em <strong>Filtros</strong> para visualizar
+            ou ajustar a busca.
+          </div>
+        )}
       </div>
 
       {/* FILTROS */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
-        <div className="flex items-center mb-4">
-          <SlidersHorizontal className="w-4 h-4 mr-2 text-[#13335a]" />
-          <h4 className="font-bold text-slate-700 text-sm uppercase tracking-wider">
-            Filtros de Consulta
-          </h4>
-        </div>
+      {showFilters && (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+          <div className="flex items-center mb-4">
+            <SlidersHorizontal className="w-4 h-4 mr-2 text-[#13335a]" />
+            <h4 className="font-bold text-slate-700 text-sm uppercase tracking-wider">
+              Filtros de Consulta
+            </h4>
+          </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 xl:grid-cols-6 gap-4">
-          <div className="md:col-span-2">
-            <label className="block text-xs font-semibold text-slate-600 mb-1">
-              Busca geral
-            </label>
+          <div className="grid grid-cols-1 md:grid-cols-4 xl:grid-cols-6 gap-4">
+            <div className="md:col-span-2">
+              <label className="block text-xs font-semibold text-slate-600 mb-1">
+                Busca geral
+              </label>
 
-            <div className="relative">
-              <Search className="absolute left-2 top-2.5 w-4 h-4 text-slate-400" />
+              <div className="relative">
+                <Search className="absolute left-2 top-2.5 w-4 h-4 text-slate-400" />
+
+                <input
+                  type="text"
+                  placeholder="Número, escola, bairro, protocolo..."
+                  className="w-full p-2 pl-8 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#66b6e3]"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1">
+                CRE
+              </label>
+
+              <select
+                className="w-full p-2 pr-8 border rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#66b6e3]"
+                value={filterCre}
+                onChange={(e) => setFilterCre(e.target.value)}
+              >
+                <option value="">Todas</option>
+
+                {CRES.map((cre) => (
+                  <option key={cre} value={cre}>
+                    {cre}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1">
+                Categoria
+              </label>
+
+              <select
+                className="w-full p-2 pr-8 border rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#66b6e3]"
+                value={filterCategory}
+                onChange={(e) => setFilterCategory(e.target.value)}
+              >
+                <option value="">Todas</option>
+
+                {CATEGORIES.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1">
+                Prioridade
+              </label>
+
+              <select
+                className="w-full p-2 pr-8 border rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#66b6e3]"
+                value={filterPriority}
+                onChange={(e) => setFilterPriority(e.target.value)}
+              >
+                <option value="">Todas</option>
+
+                {PRIORITIES.map((priority) => (
+                  <option key={priority.name} value={priority.name}>
+                    {priority.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1">
+                Status
+              </label>
+
+              <select
+                className="w-full p-2 pr-8 border rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#66b6e3]"
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+              >
+                {!historyMode ? (
+                  <>
+                    <option value="">Todos os pendentes</option>
+
+                    {OPEN_STATUSES.map((status) => (
+                      <option key={status} value={status}>
+                        {status}
+                      </option>
+                    ))}
+                  </>
+                ) : (
+                  <>
+                    <option value="">Todos os status</option>
+
+                    {STATUS.map((status) => (
+                      <option key={status} value={status}>
+                        {status}
+                      </option>
+                    ))}
+                  </>
+                )}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1">
+                Protocolo
+              </label>
 
               <input
                 type="text"
-                placeholder="Número, escola, bairro, protocolo..."
-                className="w-full p-2 pl-8 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#66b6e3]"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Ex: AR-2026"
+                className="w-full p-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#66b6e3]"
+                value={filterProtocol}
+                onChange={(e) => setFilterProtocol(e.target.value)}
               />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1">
+                Data inicial
+              </label>
+
+              <div className="relative">
+                <CalendarDays className="absolute left-2 top-2.5 w-4 h-4 text-slate-400" />
+
+                <input
+                  type="date"
+                  className="w-full p-2 pl-8 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#66b6e3]"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-600 mb-1">
+                Data final
+              </label>
+
+              <div className="relative">
+                <CalendarDays className="absolute left-2 top-2.5 w-4 h-4 text-slate-400" />
+
+                <input
+                  type="date"
+                  className="w-full p-2 pl-8 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#66b6e3]"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                />
+              </div>
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">
-              CRE
-            </label>
-
-            <select
-              className="w-full p-2 pr-8 border rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#66b6e3]"
-              value={filterCre}
-              onChange={(e) => setFilterCre(e.target.value)}
-            >
-              <option value="">Todas</option>
-
-              {CRES.map((cre) => (
-                <option key={cre} value={cre}>
-                  {cre}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">
-              Categoria
-            </label>
-
-            <select
-              className="w-full p-2 pr-8 border rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#66b6e3]"
-              value={filterCategory}
-              onChange={(e) => setFilterCategory(e.target.value)}
-            >
-              <option value="">Todas</option>
-
-              {CATEGORIES.map((category) => (
-                <option key={category} value={category}>
-                  {category}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">
-              Prioridade
-            </label>
-
-            <select
-              className="w-full p-2 pr-8 border rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#66b6e3]"
-              value={filterPriority}
-              onChange={(e) => setFilterPriority(e.target.value)}
-            >
-              <option value="">Todas</option>
-
-              {PRIORITIES.map((priority) => (
-                <option key={priority.name} value={priority.name}>
-                  {priority.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">
-              Status
-            </label>
-
-            <select
-              className="w-full p-2 pr-8 border rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#66b6e3]"
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-            >
-              {!historyMode ? (
-                <>
-                  <option value="">Todos os pendentes</option>
-
-                  {OPEN_STATUSES.map((status) => (
-                    <option key={status} value={status}>
-                      {status}
-                    </option>
-                  ))}
-                </>
-              ) : (
-                <>
-                  <option value="">Todos os status</option>
-
-                  {STATUS.map((status) => (
-                    <option key={status} value={status}>
-                      {status}
-                    </option>
-                  ))}
-                </>
-              )}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">
-              Protocolo
-            </label>
-
-            <input
-              type="text"
-              placeholder="Ex: AR-2026"
-              className="w-full p-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#66b6e3]"
-              value={filterProtocol}
-              onChange={(e) => setFilterProtocol(e.target.value)}
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">
-              Data inicial
-            </label>
-
-            <div className="relative">
-              <CalendarDays className="absolute left-2 top-2.5 w-4 h-4 text-slate-400" />
-
-              <input
-                type="date"
-                className="w-full p-2 pl-8 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#66b6e3]"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">
-              Data final
-            </label>
-
-            <div className="relative">
-              <CalendarDays className="absolute left-2 top-2.5 w-4 h-4 text-slate-400" />
-
-              <input
-                type="date"
-                className="w-full p-2 pl-8 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#66b6e3]"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-              />
-            </div>
+          <div className="mt-4 text-xs text-slate-500">
+            Exibindo{" "}
+            <strong className="text-[#13335a]">{displayedTickets.length}</strong>{" "}
+            de{" "}
+            <strong className="text-[#13335a]">{filteredTickets.length}</strong>{" "}
+            chamado(s) encontrado(s).
+            {!historyMode && filteredTickets.length > 5 && (
+              <span className="ml-1">
+                Apenas os 5 primeiros pendentes são exibidos neste modo.
+              </span>
+            )}
           </div>
         </div>
-
-        <div className="mt-4 text-xs text-slate-500">
-          Exibindo{" "}
-          <strong className="text-[#13335a]">{displayedTickets.length}</strong>{" "}
-          de{" "}
-          <strong className="text-[#13335a]">{filteredTickets.length}</strong>{" "}
-          chamado(s) encontrado(s).
-          {!historyMode && filteredTickets.length > 5 && (
-            <span className="ml-1">
-              Apenas os 5 primeiros pendentes são exibidos neste modo.
-            </span>
-          )}
-        </div>
-      </div>
+      )}
 
       {/* TABELA DESKTOP */}
       <div className="hidden lg:block bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">

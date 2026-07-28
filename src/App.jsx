@@ -23,8 +23,7 @@ import TicketDetailsView from "./views/TicketDetailsView";
 import AllocationView from "./views/AllocationView";
 import MetricsView from "./views/MetricsView";
 import DocumentationView from "./views/DocumentationView";
-
-import { createTicket, getTickets } from "./services/ticketService";
+import { createTicket, getTickets, updateTicket } from "./services/ticketService";
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -120,22 +119,30 @@ export default function App() {
   };
 
 
-  const handleUpdateTicket = (
-    updatedTicket
-  ) => {
-    setTickets((prev) =>
-      prev.map((t) =>
-        t.id === updatedTicket.id
-          ? updatedTicket
-          : t
-      )
-    );
+  const handleUpdateTicket = async (updatedTicket) => {
+    try {
+      const savedTicket = {
+        ...updatedTicket,
+        updatedAt: new Date().toISOString()
+      };
 
-    if (
-      selectedTicket &&
-      selectedTicket.id === updatedTicket.id
-    ) {
-      setSelectedTicket(updatedTicket);
+      await updateTicket(savedTicket);
+
+      setTickets((prev) =>
+        prev.map((t) =>
+          t.id === savedTicket.id ? savedTicket : t
+        )
+      );
+
+      if (
+        selectedTicket &&
+        selectedTicket.id === savedTicket.id
+      ) {
+        setSelectedTicket(savedTicket);
+      }
+    } catch (error) {
+      console.error("Erro ao atualizar chamado:", error);
+      alert("Erro ao atualizar chamado.");
     }
   };
 
@@ -179,7 +186,7 @@ export default function App() {
 
   const canViewMetrics =
     [
-      "Gestão",
+      "Admin",
       "COR",
       "CTO",
       "CRE"
@@ -187,7 +194,7 @@ export default function App() {
 
   const canViewKanban =
     [
-      "Gestão",
+      "Admin",
       "COR",
       "CTO",
       "CRE"
@@ -292,7 +299,7 @@ export default function App() {
                 }`}
               >
                 <FileText className="w-4 h-4 mr-1" />
-                Documentação
+                Manual do Usuário
               </button>
 
             </nav>

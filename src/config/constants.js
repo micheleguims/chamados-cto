@@ -22,7 +22,7 @@ export const USER_ROLES = [
   "CRE",
   "COR",
   "CTO",
-  "Gestão"
+  "Admin"
 ];
 
 export const STATUS = [
@@ -144,81 +144,4 @@ const getRetroDate = (daysAgo, hour = 8) => {
   d.setDate(d.getDate() - daysAgo);
   d.setHours(hour, 0, 0, 0);
   return d.toISOString();
-};
-
-export const INITIAL_TICKETS = [
-  {
-    id: "INF-2026-000245",
-
-    createdAt: getRetroDate(2, 7),
-    updatedAt: getRetroDate(1, 10),
-
-    status: "Em atendimento",
-
-    priority: "Crítica",
-
-    school: {
-      cre: "3ª CRE",
-      code: "0301012",
-      name: "Creche Municipal Tia Andreza",
-      address: "Rua Exemplo, 100",
-      neighborhood: "Méier",
-      phone: "(21)99999-9999"
-    },
-
-    category: "Água",
-    subcategory: "Falta d’água",
-
-    impact: "Atendimento parcial",
-
-    title: "Unidade sem abastecimento de água",
-
-    description:
-      "Ausência de água durante o turno escolar. Cozinha e sanitários afetados.",
-
-    affectedLocation: "Toda unidade",
-
-    externalAction: {
-      agency: "Águas do Rio",
-      protocol: "AR-2026-998877",
-      triggeredAt: getRetroDate(2, 8),
-      responsible: "CTO"
-    },
-
-    resolution: {
-      solutionApplied: "",
-      resolvedAt: null,
-      confirmedBySchool: false,
-      closedAt: null
-    },
-
-    requesterEmails: [
-      "direcao.escola@rio.rj.gov.br"
-    ],
-
-    attachments: [],
-
-    comments: [],
-
-    history: [
-      {
-        id: 1,
-        type: "create",
-        message: "Chamado aberto pela unidade escolar.",
-        date: getRetroDate(2, 7)
-      },
-      {
-        id: 2,
-        type: "triage",
-        message: "Validação realizada pela CRE.",
-        date: getRetroDate(2, 8)
-      },
-      {
-        id: 3,
-        type: "dispatch",
-        message: "Chamado encaminhado para CTO.",
-        date: getRetroDate(2, 9)
-      }
-    ]
-  }
-];
+}

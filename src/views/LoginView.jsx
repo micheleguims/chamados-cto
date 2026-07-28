@@ -56,12 +56,12 @@ export default function LoginView({ onLogin }) {
       email: "cto@rio.rj.gov.br"
     },
 
-    gestao: {
-      username: "gestao",
+    admin: {
+      username: "admin",
       password: "123",
-      role: "Gestão",
-      name: "Gestão Executiva",
-      email: "gestao@rio.rj.gov.br"
+      role: "Admin",
+      name: "Administrador do Sistema",
+      email: "admin@rio.rj.gov.br"
     }
   };
 
@@ -166,10 +166,10 @@ export default function LoginView({ onLogin }) {
               <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
                 <Briefcase className="w-5 h-5 text-[#13335a] mb-2" />
                 <div className="font-semibold text-slate-800">
-                  Gestão
+                  Administrador
                 </div>
                 <div className="text-xs text-slate-500">
-                  Indicadores executivos
+                  Controle do Sistema
                 </div>
               </div>
 
@@ -313,15 +313,15 @@ export default function LoginView({ onLogin }) {
                   </button>
 
                   <button
-                    onClick={() => quickLogin("gestao")}
+                    onClick={() => quickLogin("admin")}
                     className="p-3 border rounded-lg hover:bg-slate-50 text-left sm:col-span-2"
                   >
                     <div className="font-semibold text-slate-800">
-                      Gestão Executiva
+                      Administrador
                     </div>
 
                     <div className="text-xs text-slate-500">
-                      Visão Estratégica e Indicadores
+                      Administração do Sistema
                     </div>
                   </button>
 
@@ -337,7 +337,7 @@ export default function LoginView({ onLogin }) {
                     <div>cre / 123</div>
                     <div>cor / 123</div>
                     <div>cto / 123</div>
-                    <div>gestao / 123</div>
+                    <div>admin / 123</div>
                   </div>
                 </div>
 

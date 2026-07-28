@@ -21,8 +21,8 @@ import {
   getSlaInfo
 } from "../utils/helpers";
 
-import Badge from "../components/Badge";
-import EmptyState from "../components/EmptyState";
+import Badge from "../components/common/Badge";
+import EmptyState from "../components/common/EmptyState";
 
 import {
   LayoutDashboard,

@@ -28,7 +28,7 @@ export default function DocumentationView() {
           <FileText className="w-6 h-6 mr-2 text-[#13335a]" />
 
           <h1 className="text-2xl font-bold text-slate-800">
-            Documentação do Sistema
+            Manual do Sistema
           </h1>
         </div>
 
@@ -207,24 +207,6 @@ export default function DocumentationView() {
           <li>Anexos não substituem descrição textual.</li>
           <li>Chamados não podem ser encerrados sem solução registrada.</li>
           <li>Encerramento exige confirmação da unidade escolar.</li>
-        </ul>
-
-      </div>
-
-      {/* ROADMAP */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-
-        <h2 className="font-bold text-slate-800 mb-4">
-          Evoluções Futuras
-        </h2>
-
-        <ul className="space-y-2 text-slate-600 list-disc pl-5">
-          <li>Integração WhatsApp → Pré-Chamado.</li>
-          <li>Integração com Power BI.</li>
-          <li>Mapa georreferenciado.</li>
-          <li>Integração automática com concessionárias.</li>
-          <li>Classificação automática via IA.</li>
-          <li>Painel preditivo de recorrências.</li>
         </ul>
 
       </div>

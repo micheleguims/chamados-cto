@@ -3,7 +3,10 @@
 // src/views/TicketFormView.jsx
 // ==========================================
 
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+
+import { getSchools } from "../services/schoolService";
+
 import {
   CRES,
   INFRASTRUCTURE_TREE,
@@ -13,10 +16,8 @@ import {
 } from "../config/constants";
 
 import {
-  Plus,
   PlusCircle,
   Paperclip,
-  X,
   CheckCircle,
   ImageIcon,
   FileIcon,
@@ -28,33 +29,45 @@ import {
   Phone,
   ClipboardList,
   Siren,
-  Wrench,
-  Mail
+  Wrench
 } from "lucide-react";
 
 export default function TicketFormView({ currentUser, onSubmit, onCancel }) {
   const fileInputRef = useRef(null);
 
-  const [category, setCategory] = useState("");
-  const [subcategory, setSubcategory] = useState("");
+  // ----------------------------------------
+  // PERFIL DO USUÁRIO
+  // ----------------------------------------
+  const role = String(currentUser?.role || "").toLowerCase();
+  const isSchoolUser = role === "escola";
 
-  const [emails, setEmails] = useState([
-    currentUser?.email || ""
-  ]);
+  // ----------------------------------------
+  // ESTADOS DA UNIDADE ESCOLAR
+  // ----------------------------------------
+  const [schools, setSchools] = useState([]);
+  const [schoolsLoading, setSchoolsLoading] = useState(false);
+  const [schoolsError, setSchoolsError] = useState("");
 
-  const [notifyUser, setNotifyUser] = useState(true);
-  const [attachments, setAttachments] = useState([]);
-  const [fileToDelete, setFileToDelete] = useState(null);
+  const [selectedSchoolId, setSelectedSchoolId] = useState("");
 
   const [schoolData, setSchoolData] = useState({
     cre: currentUser?.cre || currentUser?.sector || "",
-    code: "",
+    code: currentUser?.schoolCode || "",
     name: "",
     address: "",
     neighborhood: "",
     phone: ""
   });
 
+  // ----------------------------------------
+  // ESTADOS DA CLASSIFICAÇÃO
+  // ----------------------------------------
+  const [category, setCategory] = useState("");
+  const [subcategory, setSubcategory] = useState("");
+
+  // ----------------------------------------
+  // ESTADOS DA OCORRÊNCIA
+  // ----------------------------------------
   const [occurrenceData, setOccurrenceData] = useState({
     title: "",
     priority: "",
@@ -64,6 +77,9 @@ export default function TicketFormView({ currentUser, onSubmit, onCancel }) {
     description: ""
   });
 
+  // ----------------------------------------
+  // ESTADOS DO ACIONAMENTO EXTERNO
+  // ----------------------------------------
   const [externalAction, setExternalAction] = useState({
     agency: "",
     protocol: "",
@@ -71,11 +87,23 @@ export default function TicketFormView({ currentUser, onSubmit, onCancel }) {
     responsible: ""
   });
 
+  // ----------------------------------------
+  // ESTADOS DOS ANEXOS
+  // ----------------------------------------
+  const [attachments, setAttachments] = useState([]);
+  const [fileToDelete, setFileToDelete] = useState(null);
+
+  // ----------------------------------------
+  // SUBCATEGORIAS DA ÁRVORE DE INFRA
+  // ----------------------------------------
   const subcategoryOptions = useMemo(() => {
     if (!category) return [];
     return INFRASTRUCTURE_TREE[category] || [];
   }, [category]);
 
+  // ----------------------------------------
+  // GERAÇÃO DO NÚMERO DO CHAMADO
+  // ----------------------------------------
   const generateTicketId = () => {
     const year = new Date().getFullYear();
     const randomNumber = Math.floor(Math.random() * 999999) + 1;
@@ -83,6 +111,119 @@ export default function TicketFormView({ currentUser, onSubmit, onCancel }) {
     return `INF-${year}-${String(randomNumber).padStart(6, "0")}`;
   };
 
+  // ----------------------------------------
+  // CARREGAR ESCOLAS DO SUPABASE
+  // ----------------------------------------
+  useEffect(() => {
+    async function loadSchools() {
+      try {
+        setSchoolsLoading(true);
+        setSchoolsError("");
+
+        const data = await getSchools();
+
+        setSchools(data || []);
+      } catch (error) {
+        console.error("Erro ao carregar escolas:", error);
+        setSchoolsError("Não foi possível carregar a lista de unidades escolares.");
+      } finally {
+        setSchoolsLoading(false);
+      }
+    }
+
+    loadSchools();
+  }, []);
+
+  // ----------------------------------------
+  // PREENCHIMENTO AUTOMÁTICO PARA PERFIL ESCOLA
+  // ----------------------------------------
+  useEffect(() => {
+    if (!isSchoolUser) return;
+
+    const currentSchoolCode = currentUser?.schoolCode;
+
+    if (!currentSchoolCode) {
+      setSchoolData(prev => ({
+        ...prev,
+        cre: currentUser?.cre || currentUser?.sector || prev.cre || "",
+        code: prev.code || ""
+      }));
+
+      return;
+    }
+
+    const school = schools.find(
+      item => String(item.code) === String(currentSchoolCode)
+    );
+
+    // Enquanto a lista ainda não carregou, mantém pelo menos CRE e código do login.
+    if (!school) {
+      setSelectedSchoolId("");
+
+      setSchoolData(prev => ({
+        ...prev,
+        cre: currentUser?.cre || currentUser?.sector || prev.cre || "",
+        code: currentSchoolCode || prev.code || ""
+      }));
+
+      return;
+    }
+
+    setSelectedSchoolId(String(school.id));
+
+    setSchoolData({
+      cre: school.cre || currentUser?.cre || "",
+      code: school.code || currentSchoolCode || "",
+      name: school.name || "",
+      address: school.address || "",
+      neighborhood: school.neighborhood || "",
+      phone: school.phone || ""
+    });
+  }, [schools, currentUser, isSchoolUser]);
+
+  // ----------------------------------------
+  // SELEÇÃO MANUAL DE ESCOLA
+  // Admin, CRE, COR e CTO podem escolher a unidade.
+  // Escola recebe preenchimento automático e não troca a unidade.
+  // ----------------------------------------
+  const handleSchoolSelect = (e) => {
+    const schoolId = e.target.value;
+
+    setSelectedSchoolId(schoolId);
+
+    if (!schoolId) {
+      setSchoolData({
+        cre: currentUser?.cre || currentUser?.sector || "",
+        code: "",
+        name: "",
+        address: "",
+        neighborhood: "",
+        phone: ""
+      });
+
+      return;
+    }
+
+    const school = schools.find(
+      item => String(item.id) === String(schoolId)
+    );
+
+    if (!school) return;
+
+    setSchoolData({
+      cre: school.cre || "",
+      code: school.code || "",
+      name: school.name || "",
+      address: school.address || "",
+      neighborhood: school.neighborhood || "",
+      phone: school.phone || ""
+    });
+  };
+
+  // ----------------------------------------
+  // ALTERAÇÃO DOS DADOS DA ESCOLA
+  // Usado apenas para perfis que podem editar.
+  // ----------------------------------------
   const handleSchoolChange = (field, value) => {
     setSchoolData(prev => ({
       ...prev,
@@ -90,6 +231,9 @@ export default function TicketFormView({ currentUser, onSubmit, onCancel }) {
     }));
   };
 
+  // ----------------------------------------
+  // ALTERAÇÃO DA OCORRÊNCIA
+  // ----------------------------------------
   const handleOccurrenceChange = (field, value) => {
     setOccurrenceData(prev => ({
       ...prev,
@@ -97,6 +241,9 @@ export default function TicketFormView({ currentUser, onSubmit, onCancel }) {
     }));
   };
 
+  // ----------------------------------------
+  // ALTERAÇÃO DO ACIONAMENTO EXTERNO
+  // ----------------------------------------
   const handleExternalActionChange = (field, value) => {
     setExternalAction(prev => ({
       ...prev,
@@ -104,20 +251,11 @@ export default function TicketFormView({ currentUser, onSubmit, onCancel }) {
     }));
   };
 
-  const handleEmailChange = (index, value) => {
-    const newEmails = [...emails];
-    newEmails[index] = value;
-    setEmails(newEmails);
-  };
-
-  const addEmailField = () => {
-    setEmails(prev => [...prev, ""]);
-  };
-
-  const removeEmailField = (index) => {
-    setEmails(prev => prev.filter((_, i) => i !== index));
-  };
-
+  // ----------------------------------------
+  // UPLOAD LOCAL DE ANEXO
+  // Observação: neste MVP, o anexo fica como objectURL local.
+  // Na integração real, este ponto deve ser trocado por Supabase Storage.
+  // ----------------------------------------
   const handleFileUpload = (e) => {
     const file = e.target.files?.[0];
 
@@ -138,25 +276,35 @@ export default function TicketFormView({ currentUser, onSubmit, onCancel }) {
     }
   };
 
+  // ----------------------------------------
+  // EXCLUIR ANEXO
+  // ----------------------------------------
   const confirmDeleteFile = (id) => {
     setAttachments(prev => prev.filter(att => att.id !== id));
     setFileToDelete(null);
   };
 
+  // ----------------------------------------
+  // VERIFICA SE HÁ ACIONAMENTO EXTERNO PREENCHIDO
+  // ----------------------------------------
   const isExternalActionFilled =
     externalAction.agency ||
     externalAction.protocol ||
     externalAction.triggeredAt ||
     externalAction.responsible;
 
+  // ----------------------------------------
+  // SUBMISSÃO DO FORMULÁRIO
+  // ----------------------------------------
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    const now = new Date().toISOString();
+    if (!schoolData.name?.trim()) {
+      alert("Informe ou selecione a unidade escolar.");
+      return;
+    }
 
-    const cleanEmails = emails
-      .map(email => email.trim())
-      .filter(Boolean);
+    const now = new Date().toISOString();
 
     const classification = [category, subcategory]
       .filter(Boolean)
@@ -260,9 +408,6 @@ export default function TicketFormView({ currentUser, onSubmit, onCancel }) {
         linkedTicketId: null
       },
 
-      requesterEmails: cleanEmails,
-      notifyUser,
-
       assignedTo: [],
       priorityIndex: 999,
 
@@ -298,10 +443,31 @@ export default function TicketFormView({ currentUser, onSubmit, onCancel }) {
       <form onSubmit={handleSubmit} className="space-y-8">
         {/* IDENTIFICAÇÃO DA UNIDADE */}
         <section className="p-5 bg-slate-50 rounded-xl border border-slate-200">
-          <h3 className="text-sm font-bold text-slate-700 mb-4 uppercase tracking-wider flex items-center">
-            <School className="w-4 h-4 mr-2 text-[#13335a]" />
-            Dados da Unidade Escolar
-          </h3>
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-4">
+            <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center">
+              <School className="w-4 h-4 mr-2 text-[#13335a]" />
+              Dados da Unidade Escolar
+            </h3>
+
+            {isSchoolUser && (
+              <span className="text-xs bg-blue-50 text-blue-700 border border-blue-100 px-3 py-1 rounded-full">
+                Unidade vinculada ao perfil Escola
+              </span>
+            )}
+          </div>
+
+          {schoolsError && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700 flex items-start">
+              <AlertTriangle className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
+              <span>{schoolsError}</span>
+            </div>
+          )}
+
+          {isSchoolUser && schoolsLoading && (
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-100 rounded-lg text-xs text-blue-700">
+              Carregando dados da unidade vinculada ao seu perfil...
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
@@ -311,7 +477,8 @@ export default function TicketFormView({ currentUser, onSubmit, onCancel }) {
 
               <select
                 required
-                className="w-full p-2 pr-8 border rounded bg-white focus:outline-none focus:ring-2 focus:ring-[#66b6e3]"
+                disabled={isSchoolUser}
+                className="w-full p-2 pr-8 border rounded bg-white focus:outline-none focus:ring-2 focus:ring-[#66b6e3] disabled:bg-slate-100 disabled:text-slate-500"
                 value={schoolData.cre}
                 onChange={e => handleSchoolChange("cre", e.target.value)}
               >
@@ -333,9 +500,10 @@ export default function TicketFormView({ currentUser, onSubmit, onCancel }) {
               <input
                 required
                 type="text"
-                className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-[#66b6e3]"
+                className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-[#66b6e3] disabled:bg-slate-100 disabled:text-slate-500"
                 placeholder="Ex: 0301012"
                 value={schoolData.code}
+                disabled={isSchoolUser}
                 onChange={e => handleSchoolChange("code", e.target.value)}
               />
             </div>
@@ -367,15 +535,33 @@ export default function TicketFormView({ currentUser, onSubmit, onCancel }) {
               <div className="relative">
                 <Building2 className="absolute left-2 top-2.5 w-4 h-4 text-slate-400" />
 
-                <input
-                  required
-                  type="text"
-                  className="w-full p-2 pl-8 border rounded focus:outline-none focus:ring-2 focus:ring-[#66b6e3]"
-                  placeholder="Ex: Creche Municipal Tia Andreza"
-                  value={schoolData.name}
-                  onChange={e => handleSchoolChange("name", e.target.value)}
-                />
+                <select
+                  required={!isSchoolUser}
+                  value={selectedSchoolId}
+                  onChange={handleSchoolSelect}
+                  disabled={isSchoolUser}
+                  className="w-full p-2 pl-8 border rounded bg-white focus:outline-none focus:ring-2 focus:ring-[#66b6e3] disabled:bg-slate-100 disabled:text-slate-500"
+                >
+                  <option value="">
+                    {schoolsLoading
+                      ? "Carregando unidades..."
+                      : "Selecione a unidade"}
+                  </option>
+
+                  {schools.map(school => (
+                    <option key={school.id} value={school.id}>
+                      {school.name}
+                    </option>
+                  ))}
+                </select>
               </div>
+
+              {isSchoolUser && schoolData.name && !selectedSchoolId && (
+                <p className="text-xs text-slate-500 mt-1">
+                  Unidade identificada pelo perfil:{" "}
+                  <strong>{schoolData.name}</strong>
+                </p>
+              )}
             </div>
 
             <div className="md:col-span-2">
@@ -389,7 +575,8 @@ export default function TicketFormView({ currentUser, onSubmit, onCancel }) {
                 <input
                   required
                   type="text"
-                  className="w-full p-2 pl-8 border rounded focus:outline-none focus:ring-2 focus:ring-[#66b6e3]"
+                  disabled={isSchoolUser}
+                  className="w-full p-2 pl-8 border rounded focus:outline-none focus:ring-2 focus:ring-[#66b6e3] disabled:bg-slate-100 disabled:text-slate-500"
                   placeholder="Rua, número e complemento"
                   value={schoolData.address}
                   onChange={e => handleSchoolChange("address", e.target.value)}
@@ -405,7 +592,8 @@ export default function TicketFormView({ currentUser, onSubmit, onCancel }) {
               <input
                 required
                 type="text"
-                className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-[#66b6e3]"
+                disabled={isSchoolUser}
+                className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-[#66b6e3] disabled:bg-slate-100 disabled:text-slate-500"
                 placeholder="Ex: Méier"
                 value={schoolData.neighborhood}
                 onChange={e =>
@@ -684,66 +872,6 @@ export default function TicketFormView({ currentUser, onSubmit, onCancel }) {
               />
             </div>
           </div>
-        </section>
-
-        {/* E-MAILS DE NOTIFICAÇÃO */}
-        <section className="p-5 bg-blue-50/40 rounded-xl border border-blue-100">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
-            <h3 className="text-sm font-bold text-[#13335a] uppercase tracking-wider flex items-center">
-              <Mail className="w-4 h-4 mr-2" />
-              Notificações
-            </h3>
-
-            <label className="flex items-center space-x-2 text-sm text-slate-700 cursor-pointer">
-              <input
-                type="checkbox"
-                className="rounded text-[#13335a] focus:ring-[#13335a]"
-                checked={notifyUser}
-                onChange={e => setNotifyUser(e.target.checked)}
-              />
-
-              <span>Receber atualizações por e-mail</span>
-            </label>
-          </div>
-
-          <div className="space-y-2">
-            {emails.map((email, index) => (
-              <div key={index} className="flex gap-2">
-                <input
-                  required={notifyUser}
-                  type="email"
-                  disabled={!notifyUser}
-                  className="flex-1 p-2 border rounded text-sm disabled:bg-slate-100 disabled:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#66b6e3]"
-                  placeholder="Ex: direcao.unidade@rio.rj.gov.br"
-                  value={email}
-                  onChange={e => handleEmailChange(index, e.target.value)}
-                />
-
-                {emails.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => removeEmailField(index)}
-                    disabled={!notifyUser}
-                    className="p-2 text-red-500 hover:bg-red-50 rounded border border-transparent disabled:text-slate-300"
-                    title="Remover e-mail"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-
-          {notifyUser && (
-            <button
-              type="button"
-              onClick={addEmailField}
-              className="mt-3 text-xs font-semibold text-[#66b6e3] hover:text-[#13335a] flex items-center transition"
-            >
-              <Plus className="w-3 h-3 mr-1" />
-              Adicionar outro e-mail para notificação
-            </button>
-          )}
         </section>
 
         {/* ANEXOS */}
