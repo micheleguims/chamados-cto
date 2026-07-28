@@ -43,7 +43,9 @@ import {
   Link,
   CheckCircle2,
   Ban,
-  RefreshCcw
+  RefreshCcw,
+  ClipboardList,
+  Layers
 } from "lucide-react";
 
 export default function TicketDetailsView({
@@ -93,7 +95,7 @@ export default function TicketDetailsView({
   const isSchool = role === "escola";
 
   const canOperate = isAdmin || isCre || isCor || isCto;
-  const canEditTriage = isAdmin || isCre || isCor || isCto;
+  const canManageAttendance = isAdmin || isCre || isCor || isCto;
   const canEditExternalAction = isAdmin || isCto || isCor || isCre;
   const canConfirmSchoolResolution = isAdmin || isSchool || isCre;
   const canCloseTicket = isAdmin || isCre || isCto || isCor;
@@ -121,6 +123,16 @@ export default function TicketDetailsView({
     ticket.createdAt,
     ticket.priority,
     ticket.status
+  );
+
+  const attendanceStatuses = STATUS.filter(
+    status =>
+      ![
+        "Resolvido",
+        "Encerrado",
+        "Cancelado",
+        "Reiterado"
+      ].includes(status)
   );
 
   const createHistoryEntry = (type, message) => ({
@@ -190,23 +202,13 @@ export default function TicketDetailsView({
       }.`
     );
 
-    const partialUpdate = {
-      status: newStatus
-    };
+    updateTicket(
+      {
+        status: newStatus
+      },
+      logEntry
+    );
 
-    if (newStatus === "Resolvido" && !resolution?.resolvedAt) {
-      partialUpdate.resolution = {
-        ...resolution,
-        resolvedAt: new Date().toISOString()
-      };
-
-      setResolutionDraft(prev => ({
-        ...prev,
-        resolvedAt: new Date().toISOString().slice(0, 16)
-      }));
-    }
-
-    updateTicket(partialUpdate, logEntry);
     showFeedback(`Status alterado para ${newStatus}.`);
   };
 
@@ -617,7 +619,12 @@ export default function TicketDetailsView({
             ← Voltar para listagem
           </button>
 
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+          <section className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+            <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider mb-4 flex items-center">
+              <Layers className="w-4 h-4 mr-2 text-[#13335a]" />
+              Resumo do Chamado
+            </h3>
+
             <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-5">
               <div>
                 <div className="flex flex-wrap gap-2 mb-3">
@@ -666,67 +673,74 @@ export default function TicketDetailsView({
 
             {slaInfo && (
               <div
-                className={`mb-5 px-3 py-2 rounded-lg border text-sm inline-flex items-center ${slaInfo.classes}`}
+                className={`px-3 py-2 rounded-lg border text-sm inline-flex items-center ${slaInfo.classes}`}
               >
                 <AlertTriangle className="w-4 h-4 mr-2" />
                 {slaInfo.text}
               </div>
             )}
+          </section>
 
-            <div className="p-5 bg-slate-50 rounded-xl border border-slate-200 mb-5">
-              <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider mb-4 flex items-center">
-                <School className="w-4 h-4 mr-2 text-[#13335a]" />
-                Unidade Escolar
-              </h3>
+          <section className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+            <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider mb-4 flex items-center">
+              <School className="w-4 h-4 mr-2 text-[#13335a]" />
+              Unidade Escolar
+            </h3>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                <div className="md:col-span-2">
-                  <span className="block text-slate-500">Nome da unidade</span>
-                  <span className="font-semibold text-slate-800">
-                    {school.name || "Não informado"}
-                  </span>
-                </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+              <div className="md:col-span-2">
+                <span className="block text-slate-500">Nome da unidade</span>
+                <span className="font-semibold text-slate-800">
+                  {school.name || "Não informado"}
+                </span>
+              </div>
 
-                <div>
-                  <span className="block text-slate-500">CRE</span>
-                  <span className="font-semibold text-slate-800">
-                    {school.cre || ticket.sector || "Não informada"}
-                  </span>
-                </div>
+              <div>
+                <span className="block text-slate-500">CRE</span>
+                <span className="font-semibold text-slate-800">
+                  {school.cre || ticket.sector || "Não informada"}
+                </span>
+              </div>
 
-                <div>
-                  <span className="block text-slate-500">Código</span>
-                  <span className="font-semibold text-slate-800">
-                    {school.code || "Não informado"}
-                  </span>
-                </div>
+              <div>
+                <span className="block text-slate-500">Código</span>
+                <span className="font-semibold text-slate-800">
+                  {school.code || "Não informado"}
+                </span>
+              </div>
 
-                <div>
-                  <span className="block text-slate-500">Bairro</span>
-                  <span className="font-semibold text-slate-800">
-                    {school.neighborhood || "Não informado"}
-                  </span>
-                </div>
+              <div>
+                <span className="block text-slate-500">Bairro</span>
+                <span className="font-semibold text-slate-800">
+                  {school.neighborhood || "Não informado"}
+                </span>
+              </div>
 
-                <div>
-                  <span className="block text-slate-500">Telefone da direção</span>
-                  <span className="font-semibold text-slate-800 flex items-center">
-                    <Phone className="w-3 h-3 mr-1 text-slate-400" />
-                    {school.phone || "Não informado"}
-                  </span>
-                </div>
+              <div>
+                <span className="block text-slate-500">Telefone da direção</span>
+                <span className="font-semibold text-slate-800 flex items-center">
+                  <Phone className="w-3 h-3 mr-1 text-slate-400" />
+                  {school.phone || "Não informado"}
+                </span>
+              </div>
 
-                <div className="md:col-span-3">
-                  <span className="block text-slate-500">Endereço</span>
-                  <span className="font-semibold text-slate-800 flex items-center">
-                    <MapPin className="w-3 h-3 mr-1 text-slate-400" />
-                    {school.address || "Não informado"}
-                  </span>
-                </div>
+              <div className="md:col-span-3">
+                <span className="block text-slate-500">Endereço</span>
+                <span className="font-semibold text-slate-800 flex items-center">
+                  <MapPin className="w-3 h-3 mr-1 text-slate-400" />
+                  {school.address || "Não informado"}
+                </span>
               </div>
             </div>
+          </section>
 
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 py-4 border-y border-slate-100 text-sm">
+          <section className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-5">
+            <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider flex items-center">
+              <FileText className="w-4 h-4 mr-2 text-[#13335a]" />
+              Ocorrência Registrada
+            </h3>
+
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
               <div>
                 <span className="block text-slate-500">Categoria</span>
                 <span className="font-semibold text-slate-800">
@@ -770,32 +784,38 @@ export default function TicketDetailsView({
               </div>
             </div>
 
-            <div className="mt-5">
-              <h3 className="font-semibold text-slate-800 mb-2 flex items-center">
-                <FileText className="w-4 h-4 mr-2 text-[#13335a]" />
+            <div>
+              <h4 className="font-semibold text-slate-800 mb-2 flex items-center text-sm">
+                <ClipboardList className="w-4 h-4 mr-2 text-[#13335a]" />
                 Descrição da ocorrência
-              </h3>
+              </h4>
 
               <div className="bg-slate-50 p-4 rounded text-slate-700 whitespace-pre-wrap text-sm border border-slate-100">
                 {ticket.description || "Sem descrição informada."}
               </div>
             </div>
-          </div>
+          </section>
 
-          {canEditTriage && (
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-6">
-              <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider flex items-center">
-                <ShieldAlert className="w-4 h-4 mr-2 text-[#13335a]" />
-                Triagem e Controle Operacional
-              </h3>
+          {canManageAttendance && (
+            <section className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-6">
+              <div>
+                <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider flex items-center">
+                  <ShieldAlert className="w-4 h-4 mr-2 text-[#13335a]" />
+                  Gestão do Atendimento
+                </h3>
+
+                <p className="text-xs text-slate-500 mt-1">
+                  Use esta área para acompanhar o andamento operacional. A resolução e o encerramento ficam no bloco específico abaixo.
+                </p>
+              </div>
 
               <div>
                 <h4 className="font-semibold text-slate-700 mb-2 text-sm">
-                  Status do chamado
+                  Status operacional
                 </h4>
 
                 <div className="flex flex-wrap gap-2">
-                  {STATUS.map(status => (
+                  {attendanceStatuses.map(status => (
                     <button
                       key={status}
                       type="button"
@@ -854,7 +874,60 @@ export default function TicketDetailsView({
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-3 pt-2">
+              <div className="p-4 rounded-lg border border-slate-200 bg-slate-50 space-y-3">
+                <h4 className="font-semibold text-slate-700 text-sm flex items-center">
+                  <Link className="w-4 h-4 mr-2 text-[#13335a]" />
+                  Recorrência e vínculo
+                </h4>
+
+                <div className="flex flex-col md:flex-row gap-4 md:items-end">
+                  <label className="flex items-center space-x-2 text-sm text-slate-700 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="rounded text-[#13335a] focus:ring-[#13335a]"
+                      checked={recurrenceDraft.isRecurring}
+                      onChange={e =>
+                        setRecurrenceDraft(prev => ({
+                          ...prev,
+                          isRecurring: e.target.checked
+                        }))
+                      }
+                    />
+
+                    <span>Problema recorrente</span>
+                  </label>
+
+                  <div className="flex-1">
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">
+                      Chamado vinculado
+                    </label>
+
+                    <input
+                      type="text"
+                      className="w-full p-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-[#66b6e3]"
+                      placeholder="Ex: INF-2026-000245"
+                      value={recurrenceDraft.linkedTicketId}
+                      onChange={e =>
+                        setRecurrenceDraft(prev => ({
+                          ...prev,
+                          linkedTicketId: e.target.value
+                        }))
+                      }
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleSaveRecurrence}
+                    className="px-4 py-2 bg-[#13335a] text-white rounded hover:opacity-90 text-sm font-semibold flex items-center"
+                  >
+                    <Save className="w-4 h-4 mr-2" />
+                    Salvar
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-3 pt-2 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={handleRegisterReiteration}
@@ -864,17 +937,6 @@ export default function TicketDetailsView({
                   Registrar Reiteração
                 </button>
 
-                {isClosedStatus && (
-                  <button
-                    type="button"
-                    onClick={handleReopenTicket}
-                    className="px-4 py-2 rounded bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 text-sm font-semibold flex items-center"
-                  >
-                    <RefreshCcw className="w-4 h-4 mr-2" />
-                    Reabrir Chamado
-                  </button>
-                )}
-
                 {ticket.status !== "Cancelado" && (
                   <button
                     type="button"
@@ -882,14 +944,14 @@ export default function TicketDetailsView({
                     className="px-4 py-2 rounded bg-slate-50 text-slate-700 border border-slate-200 hover:bg-slate-100 text-sm font-semibold flex items-center"
                   >
                     <Ban className="w-4 h-4 mr-2" />
-                    Cancelar
+                    Cancelar Chamado
                   </button>
                 )}
               </div>
-            </div>
+            </section>
           )}
 
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-5">
+          <section className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-5">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
               <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider flex items-center">
                 <Wrench className="w-4 h-4 mr-2 text-[#13335a]" />
@@ -1030,13 +1092,19 @@ export default function TicketDetailsView({
                 </button>
               </div>
             )}
-          </div>
+          </section>
 
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-5">
-            <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider flex items-center">
-              <CheckCircle2 className="w-4 h-4 mr-2 text-[#13335a]" />
-              Resolução e Encerramento
-            </h3>
+          <section className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-5">
+            <div>
+              <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider flex items-center">
+                <CheckCircle2 className="w-4 h-4 mr-2 text-[#13335a]" />
+                Resolução e Encerramento
+              </h3>
+
+              <p className="text-xs text-slate-500 mt-1">
+                Fluxo recomendado: registrar solução, marcar como resolvido, confirmar ciência da escola e encerrar formalmente.
+              </p>
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
               <div>
@@ -1214,67 +1282,39 @@ export default function TicketDetailsView({
                       Encerrar Chamado
                     </button>
                   )}
+
+                  {isClosedStatus && (
+                    <button
+                      type="button"
+                      onClick={handleReopenTicket}
+                      className="px-4 py-2 rounded bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 text-sm font-semibold flex items-center"
+                    >
+                      <RefreshCcw className="w-4 h-4 mr-2" />
+                      Reabrir Chamado
+                    </button>
+                  )}
                 </div>
               </div>
             )}
-          </div>
 
-          {canEditTriage && (
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-4">
-              <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider flex items-center">
-                <Link className="w-4 h-4 mr-2 text-[#13335a]" />
-                Recorrência / Vínculo
-              </h3>
-
-              <div className="flex flex-col md:flex-row gap-4 md:items-end">
-                <label className="flex items-center space-x-2 text-sm text-slate-700 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    className="rounded text-[#13335a] focus:ring-[#13335a]"
-                    checked={recurrenceDraft.isRecurring}
-                    onChange={e =>
-                      setRecurrenceDraft(prev => ({
-                        ...prev,
-                        isRecurring: e.target.checked
-                      }))
-                    }
-                  />
-
-                  <span>Problema recorrente</span>
-                </label>
-
-                <div className="flex-1">
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">
-                    Chamado vinculado
-                  </label>
-
-                  <input
-                    type="text"
-                    className="w-full p-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-[#66b6e3]"
-                    placeholder="Ex: INF-2026-000245"
-                    value={recurrenceDraft.linkedTicketId}
-                    onChange={e =>
-                      setRecurrenceDraft(prev => ({
-                        ...prev,
-                        linkedTicketId: e.target.value
-                      }))
-                    }
-                  />
-                </div>
-
+            {!canOperate && canConfirmSchoolResolution && (
+              <div className="pt-5 border-t border-slate-100">
                 <button
                   type="button"
-                  onClick={handleSaveRecurrence}
-                  className="px-4 py-2 bg-[#13335a] text-white rounded hover:opacity-90 text-sm font-semibold flex items-center"
+                  onClick={handleConfirmBySchool}
+                  disabled={resolution.confirmedBySchool}
+                  className="px-4 py-2 bg-blue-50 text-blue-700 border border-blue-200 rounded hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold flex items-center"
                 >
-                  <Save className="w-4 h-4 mr-2" />
-                  Salvar
+                  <School className="w-4 h-4 mr-2" />
+                  {resolution.confirmedBySchool
+                    ? "Resolução já confirmada"
+                    : "Confirmar ciência/resolução"}
                 </button>
               </div>
-            </div>
-          )}
+            )}
+          </section>
 
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+          <section className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider flex items-center">
                 <Paperclip className="w-4 h-4 mr-2 text-[#13335a]" />
@@ -1346,12 +1386,12 @@ export default function TicketDetailsView({
                 ))}
               </div>
             )}
-          </div>
+          </section>
 
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-4">
+          <section className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-4">
             <h3 className="font-bold text-slate-800 text-sm border-b pb-2 flex items-center uppercase tracking-wider">
               <History className="w-4 h-4 mr-2 text-[#13335a]" />
-              Linha do Tempo de Auditoria
+              Histórico
             </h3>
 
             {localHistory.length === 0 ? (
@@ -1375,7 +1415,7 @@ export default function TicketDetailsView({
                 ))}
               </div>
             )}
-          </div>
+          </section>
         </div>
       </div>
 
