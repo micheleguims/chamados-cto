@@ -42,14 +42,11 @@ import {
   Building2,
   Gauge,
   History,
-  MoveRight,
-  RefreshCcw
+  MoveRight
 } from "lucide-react";
 
 export default function AllocationView({
   tickets,
-  onUpdateTicket,
-  onBulkUpdateTickets,
   onViewTicket
 }) {
   const [viewLayout, setViewLayout] = useState("status");
@@ -143,19 +140,6 @@ export default function AllocationView({
       hour: "2-digit",
       minute: "2-digit"
     });
-  };
-
-  const getCurrentUserLabel = () => {
-    return "Operador";
-  };
-
-  const createHistoryEntry = (type, message) => {
-    return {
-      id: Date.now() + Math.floor(Math.random() * 1000),
-      type,
-      message,
-      date: new Date().toISOString()
-    };
   };
 
   const filteredTickets = useMemo(() => {
@@ -394,122 +378,6 @@ export default function AllocationView({
     return "bg-slate-100 text-slate-700 border-slate-200";
   };
 
-  const handleDragStart = (e, ticketId) => {
-    e.dataTransfer.setData("ticketId", ticketId);
-  };
-
-  const handleDragOver = (e) => {
-    e.preventDefault();
-  };
-
-  const handleDropToColumn = (e, column) => {
-    e.preventDefault();
-
-    const ticketId = e.dataTransfer.getData("ticketId");
-    const ticket = tickets.find((item) => item.id === ticketId);
-
-    if (!ticket) return;
-
-    const now = new Date().toISOString();
-
-    let updatedTicket = {
-      ...ticket,
-      updatedAt: now
-    };
-
-    let message = "";
-
-    if (column.type === "status") {
-      const oldStatus = ticket.status;
-      const newStatus = column.id;
-
-      if (oldStatus === newStatus) return;
-
-      updatedTicket.status = newStatus;
-
-      if (newStatus === "Resolvido") {
-        updatedTicket.resolution = {
-          ...(ticket.resolution || {}),
-          resolvedAt: ticket?.resolution?.resolvedAt || now
-        };
-      }
-
-      if (newStatus === "Encerrado") {
-        updatedTicket.resolution = {
-          ...(ticket.resolution || {}),
-          closedAt: ticket?.resolution?.closedAt || now,
-          closedBy:
-            ticket?.resolution?.closedBy ||
-            getCurrentUserLabel()
-        };
-      }
-
-      message = `Status alterado via Kanban de [${oldStatus}] para [${newStatus}].`;
-    }
-
-    if (column.type === "cre") {
-      const oldCre = getTicketCre(ticket) || "CRE não informada";
-      const newCre = column.id === "CRE não informada" ? "" : column.id;
-
-      if (oldCre === column.id) return;
-
-      updatedTicket.school = {
-        ...(ticket.school || {}),
-        cre: newCre
-      };
-
-      updatedTicket.sector = newCre;
-
-      message = `CRE alterada via Kanban de [${oldCre}] para [${
-        newCre || "CRE não informada"
-      }].`;
-    }
-
-    if (column.type === "priority") {
-      const oldPriority = ticket.priority || "Sem prioridade";
-      const newPriority = column.id === "Sem prioridade" ? "" : column.id;
-
-      if (oldPriority === column.id) return;
-
-      updatedTicket.priority = newPriority;
-
-      message = `Prioridade alterada via Kanban de [${oldPriority}] para [${
-        newPriority || "Sem prioridade"
-      }].`;
-    }
-
-    if (column.type === "agency") {
-      const oldAgency = getTicketAgency(ticket) || "Sem acionamento";
-      const newAgency = column.id === "Sem acionamento" ? "" : column.id;
-
-      if (oldAgency === column.id) return;
-
-      updatedTicket.externalAction = {
-        ...(ticket.externalAction || {}),
-        agency: newAgency
-      };
-
-      if (
-        newAgency &&
-        ["Aberto", "Em análise"].includes(ticket.status)
-      ) {
-        updatedTicket.status = "Encaminhado";
-
-        message = `Órgão/concessionária alterado via Kanban de [${oldAgency}] para [${newAgency}]. Status atualizado automaticamente para [Encaminhado].`;
-      } else {
-        message = `Órgão/concessionária alterado via Kanban de [${oldAgency}] para [${
-          newAgency || "Sem acionamento"
-        }].`;
-      }
-    }
-
-    const logEntry = createHistoryEntry("kanban_movement", message);
-
-    updatedTicket.history = [...(ticket.history || []), logEntry];
-
-    onUpdateTicket(updatedTicket);
-  };
-
   const clearFilters = () => {
     setSearchTerm("");
     setFilterCre("");
@@ -548,8 +416,6 @@ export default function AllocationView({
     return (
       <div
         key={ticket.id}
-        draggable
-        onDragStart={(e) => handleDragStart(e, ticket.id)}
         onClick={() => onViewTicket(ticket)}
         className="bg-white p-3 rounded-lg border border-slate-200 cursor-pointer shadow-sm transition-all hover:shadow-md hover:border-[#66b6e3] group"
       >
@@ -658,8 +524,8 @@ export default function AllocationView({
           </h2>
 
           <p className="text-sm text-slate-500 mt-1">
-            Organize chamados por status, CRE, prioridade ou órgão/concessionária.
-            Arraste os cards entre colunas para atualizar o fluxo operacional.
+            Visualize chamados por status, CRE, prioridade ou órgão/concessionária.
+            Para alterar dados do chamado, abra o detalhe pelo card.
           </p>
         </div>
 
@@ -892,8 +758,6 @@ export default function AllocationView({
           return (
             <div
               key={`${column.type}-${column.id}`}
-              onDragOver={handleDragOver}
-              onDrop={(e) => handleDropToColumn(e, column)}
               className={`rounded-xl border p-4 min-w-[320px] w-[320px] flex flex-col shadow-sm ${getColumnStyle(
                 column
               )}`}
@@ -906,7 +770,7 @@ export default function AllocationView({
                   </h3>
 
                   <p className="text-[11px] text-slate-500 mt-1">
-                    Arraste chamados para cá para atualizar este agrupamento.
+                    Chamados exibidos conforme o agrupamento selecionado.
                   </p>
                 </div>
 
@@ -941,16 +805,13 @@ export default function AllocationView({
         <div className="flex items-start">
           <Gauge className="w-4 h-4 mr-2 mt-0.5 text-[#13335a] flex-shrink-0" />
           <span>
-            A visão por <strong>Status</strong> altera o ciclo do chamado.
-            A visão por <strong>CRE</strong> altera a regional. A visão por{" "}
-            <strong>Prioridade</strong> altera criticidade/SLA. A visão por{" "}
-            <strong>Órgão</strong> atualiza o acionamento externo.
+            A visão por <strong>Status</strong>, <strong>CRE</strong>, <strong>Prioridade</strong> ou <strong>Órgão</strong> é apenas consultiva neste momento.
           </span>
         </div>
 
         <div className="flex items-center text-slate-400">
           <History className="w-4 h-4 mr-1" />
-          Toda movimentação gera registro no histórico do chamado.
+          Para atualizar informações, acesse o detalhe do chamado.
         </div>
       </div>
     </div>

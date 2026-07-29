@@ -1,25 +1,20 @@
 // ==========================================
 // DETALHES DO CHAMADO DE INFRAESTRUTURA ESCOLAR
 // src/views/TicketDetailsView.jsx
+// Layout reorganizado conforme referência visual enviada
 // ==========================================
-
 import React, { useRef, useState } from "react";
-
 import {
-  STATUS,
   PRIORITIES,
   IMPACTS,
   AGENCIES
 } from "../config/constants";
-
 import {
   getStatusColor,
   getPriorityColor,
   getSlaInfo
 } from "../utils/helpers";
-
 import Badge from "../components/common/Badge";
-
 import {
   X,
   Paperclip,
@@ -55,7 +50,6 @@ export default function TicketDetailsView({
   onUpdateTicket
 }) {
   const fileInputRef = useRef(null);
-
   const [previewFile, setPreviewFile] = useState(null);
   const [fileToDelete, setFileToDelete] = useState(null);
   const [feedbackMessage, setFeedbackMessage] = useState("");
@@ -87,7 +81,6 @@ export default function TicketDetailsView({
   });
 
   const role = String(currentUser?.role || "").toLowerCase();
-
   const isAdmin = role === "admin";
   const isCre = role === "cre";
   const isCor = role === "cor";
@@ -115,9 +108,8 @@ export default function TicketDetailsView({
     phone: ""
   };
 
-  const isClosedStatus = ["Resolvido", "Encerrado", "Cancelado"].includes(
-    ticket.status
-  );
+  const isTicketLocked = ticket.status === "Encerrado";
+  const canReopenTicket = canOperate && ["Resolvido", "Cancelado"].includes(ticket.status);
 
   const slaInfo = getSlaInfo(
     ticket.createdAt,
@@ -125,15 +117,14 @@ export default function TicketDetailsView({
     ticket.status
   );
 
-  const attendanceStatuses = STATUS.filter(
-    status =>
-      ![
-        "Resolvido",
-        "Encerrado",
-        "Cancelado",
-        "Reiterado"
-      ].includes(status)
-  );
+  const statusFlow = [
+    "Aberto",
+    "Em análise",
+    "Encaminhado",
+    "Em atendimento",
+    "Aguardando retorno",
+    "Encerrado"
+  ];
 
   const createHistoryEntry = (type, message) => ({
     id: Date.now() + Math.floor(Math.random() * 1000),
@@ -144,7 +135,6 @@ export default function TicketDetailsView({
 
   const showFeedback = (message) => {
     setFeedbackMessage(message);
-
     setTimeout(() => {
       setFeedbackMessage("");
     }, 3000);
@@ -180,7 +170,6 @@ export default function TicketDetailsView({
 
     const created = new Date(dateString);
     const now = new Date();
-
     const diffHours = Math.floor(
       (now - created) / (1000 * 60 * 60)
     );
@@ -468,7 +457,6 @@ export default function TicketDetailsView({
     }
 
     const now = new Date().toISOString();
-
     const closer =
       currentUser?.username ||
       currentUser?.name ||
@@ -546,7 +534,6 @@ export default function TicketDetailsView({
 
   const handleFileUpload = (e) => {
     const file = e.target.files?.[0];
-
     if (!file) return;
 
     const newAttachment = {
@@ -609,24 +596,24 @@ export default function TicketDetailsView({
         </div>
       )}
 
-      <div className="max-w-7xl mx-auto flex flex-col xl:flex-row gap-6">
-        <div className="flex-1 space-y-6">
-          <button
-            type="button"
-            onClick={onBack}
-            className="text-[#13335a] hover:text-[#66b6e3] transition flex items-center text-sm font-medium"
-          >
-            ← Voltar para listagem
-          </button>
+      <div className="max-w-6xl mx-auto space-y-6">
+        <button
+          type="button"
+          onClick={onBack}
+          className="text-[#13335a] hover:text-[#66b6e3] transition flex items-center text-sm font-medium"
+        >
+          ← Voltar para listagem
+        </button>
 
-          <section className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+          <section className="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-slate-200">
             <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider mb-4 flex items-center">
               <Layers className="w-4 h-4 mr-2 text-[#13335a]" />
               Resumo do Chamado
             </h3>
 
-            <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-5">
-              <div>
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-5">
+              <div className="min-w-0">
                 <div className="flex flex-wrap gap-2 mb-3">
                   <Badge colorClass={getStatusColor(ticket.status)}>
                     {ticket.status}
@@ -646,7 +633,7 @@ export default function TicketDetailsView({
                   )}
                 </div>
 
-                <h1 className="text-2xl font-bold text-slate-800">
+                <h1 className="text-2xl font-bold text-slate-800 break-words">
                   {ticket.title || "Chamado de infraestrutura"}
                 </h1>
 
@@ -655,16 +642,14 @@ export default function TicketDetailsView({
                 </p>
               </div>
 
-              <div className="text-sm text-slate-500 lg:text-right">
-                <div className="flex lg:justify-end items-center">
+              <div className="text-sm text-slate-500 sm:text-right shrink-0">
+                <div className="flex sm:justify-end items-center">
                   <Clock className="w-4 h-4 mr-1 text-slate-400" />
                   {getOpenedLabel(ticket.createdAt)}
                 </div>
-
                 <div className="text-xs mt-1">
                   Aberto em {formatDateTime(ticket.createdAt)}
                 </div>
-
                 <div className="text-xs mt-1">
                   Atualizado em {formatDateTime(ticket.updatedAt)}
                 </div>
@@ -681,14 +666,21 @@ export default function TicketDetailsView({
             )}
           </section>
 
-          <section className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+          <section className="lg:col-span-3 bg-white p-6 rounded-xl shadow-sm border border-slate-200">
             <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider mb-4 flex items-center">
               <School className="w-4 h-4 mr-2 text-[#13335a]" />
               Unidade Escolar
             </h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-              <div className="md:col-span-2">
+            <div className="grid grid-cols-1 md:grid-cols-[0.7fr_1.3fr] gap-x-12 gap-y-4 text-sm">
+              <div>
+                <span className="block text-slate-500">Código</span>
+                <span className="font-semibold text-slate-800">
+                  {school.code || "Não informado"}
+                </span>
+              </div>
+
+              <div>
                 <span className="block text-slate-500">Nome da unidade</span>
                 <span className="font-semibold text-slate-800">
                   {school.name || "Não informado"}
@@ -703,16 +695,10 @@ export default function TicketDetailsView({
               </div>
 
               <div>
-                <span className="block text-slate-500">Código</span>
-                <span className="font-semibold text-slate-800">
-                  {school.code || "Não informado"}
-                </span>
-              </div>
-
-              <div>
-                <span className="block text-slate-500">Bairro</span>
-                <span className="font-semibold text-slate-800">
-                  {school.neighborhood || "Não informado"}
+                <span className="block text-slate-500">Endereço</span>
+                <span className="font-semibold text-slate-800 flex items-center">
+                  <MapPin className="w-3 h-3 mr-1 text-slate-400" />
+                  {school.address || "Não informado"}
                 </span>
               </div>
 
@@ -724,389 +710,70 @@ export default function TicketDetailsView({
                 </span>
               </div>
 
-              <div className="md:col-span-3">
-                <span className="block text-slate-500">Endereço</span>
-                <span className="font-semibold text-slate-800 flex items-center">
-                  <MapPin className="w-3 h-3 mr-1 text-slate-400" />
-                  {school.address || "Não informado"}
+              <div>
+                <span className="block text-slate-500">Bairro</span>
+                <span className="font-semibold text-slate-800">
+                  {school.neighborhood || "Não informado"}
                 </span>
               </div>
             </div>
           </section>
+        </div>
 
-          <section className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-5">
-            <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider flex items-center">
-              <FileText className="w-4 h-4 mr-2 text-[#13335a]" />
-              Ocorrência Registrada
-            </h3>
-
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
-              <div>
-                <span className="block text-slate-500">Categoria</span>
-                <span className="font-semibold text-slate-800">
-                  {ticket.category || "-"}
-                </span>
-              </div>
-
-              <div>
-                <span className="block text-slate-500">Subcategoria</span>
-                <span className="font-semibold text-slate-800">
-                  {ticket.subcategory || "-"}
-                </span>
-              </div>
-
-              <div>
-                <span className="block text-slate-500">Impacto</span>
-                <span className="font-semibold text-slate-800">
-                  {ticket.impact || "-"}
-                </span>
-              </div>
-
-              <div>
-                <span className="block text-slate-500">Origem</span>
-                <span className="font-semibold text-slate-800">
-                  {ticket.origin || "-"}
-                </span>
-              </div>
-
-              <div>
-                <span className="block text-slate-500">Local afetado</span>
-                <span className="font-semibold text-slate-800">
-                  {ticket.affectedLocation || "-"}
-                </span>
-              </div>
-
-              <div>
-                <span className="block text-slate-500">Abrangência</span>
-                <span className="font-semibold text-slate-800">
-                  {ticket.scope || "-"}
-                </span>
-              </div>
-            </div>
-
-            <div>
-              <h4 className="font-semibold text-slate-800 mb-2 flex items-center text-sm">
-                <ClipboardList className="w-4 h-4 mr-2 text-[#13335a]" />
-                Descrição da ocorrência
-              </h4>
-
-              <div className="bg-slate-50 p-4 rounded text-slate-700 whitespace-pre-wrap text-sm border border-slate-100">
-                {ticket.description || "Sem descrição informada."}
-              </div>
-            </div>
-          </section>
-
-          {canManageAttendance && (
-            <section className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-6">
-              <div>
-                <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider flex items-center">
-                  <ShieldAlert className="w-4 h-4 mr-2 text-[#13335a]" />
-                  Gestão do Atendimento
-                </h3>
-
-                <p className="text-xs text-slate-500 mt-1">
-                  Use esta área para acompanhar o andamento operacional. A resolução e o encerramento ficam no bloco específico abaixo.
-                </p>
-              </div>
-
-              <div>
-                <h4 className="font-semibold text-slate-700 mb-2 text-sm">
-                  Status operacional
-                </h4>
-
-                <div className="flex flex-wrap gap-2">
-                  {attendanceStatuses.map(status => (
-                    <button
-                      key={status}
-                      type="button"
-                      onClick={() => handleStatusChange(status)}
-                      className={`px-3 py-1.5 rounded text-sm font-medium transition ${
-                        ticket.status === status
-                          ? "bg-[#13335a] text-white ring-2 ring-[#66b6e3]"
-                          : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                      }`}
-                    >
-                      {status}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-2 text-sm">
-                    Prioridade
-                  </label>
-
-                  <select
-                    className="w-full p-2 pr-8 border rounded bg-white focus:outline-none focus:ring-2 focus:ring-[#66b6e3]"
-                    value={ticket.priority || ""}
-                    onChange={e => handlePriorityChange(e.target.value)}
-                  >
-                    <option value="">Selecione...</option>
-
-                    {PRIORITIES.map(priority => (
-                      <option key={priority.name} value={priority.name}>
-                        {priority.name} — SLA {priority.slaHours}h
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-2 text-sm">
-                    Impacto na operação escolar
-                  </label>
-
-                  <select
-                    className="w-full p-2 pr-8 border rounded bg-white focus:outline-none focus:ring-2 focus:ring-[#66b6e3]"
-                    value={ticket.impact || ""}
-                    onChange={e => handleImpactChange(e.target.value)}
-                  >
-                    <option value="">Selecione...</option>
-
-                    {IMPACTS.map(impact => (
-                      <option key={impact} value={impact}>
-                        {impact}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="p-4 rounded-lg border border-slate-200 bg-slate-50 space-y-3">
-                <h4 className="font-semibold text-slate-700 text-sm flex items-center">
-                  <Link className="w-4 h-4 mr-2 text-[#13335a]" />
-                  Recorrência e vínculo
-                </h4>
-
-                <div className="flex flex-col md:flex-row gap-4 md:items-end">
-                  <label className="flex items-center space-x-2 text-sm text-slate-700 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      className="rounded text-[#13335a] focus:ring-[#13335a]"
-                      checked={recurrenceDraft.isRecurring}
-                      onChange={e =>
-                        setRecurrenceDraft(prev => ({
-                          ...prev,
-                          isRecurring: e.target.checked
-                        }))
-                      }
-                    />
-
-                    <span>Problema recorrente</span>
-                  </label>
-
-                  <div className="flex-1">
-                    <label className="block text-xs font-semibold text-slate-600 mb-1">
-                      Chamado vinculado
-                    </label>
-
-                    <input
-                      type="text"
-                      className="w-full p-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-[#66b6e3]"
-                      placeholder="Ex: INF-2026-000245"
-                      value={recurrenceDraft.linkedTicketId}
-                      onChange={e =>
-                        setRecurrenceDraft(prev => ({
-                          ...prev,
-                          linkedTicketId: e.target.value
-                        }))
-                      }
-                    />
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={handleSaveRecurrence}
-                    className="px-4 py-2 bg-[#13335a] text-white rounded hover:opacity-90 text-sm font-semibold flex items-center"
-                  >
-                    <Save className="w-4 h-4 mr-2" />
-                    Salvar
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-3 pt-2 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={handleRegisterReiteration}
-                  className="px-4 py-2 rounded bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 text-sm font-semibold flex items-center"
-                >
-                  <RotateCcw className="w-4 h-4 mr-2" />
-                  Registrar Reiteração
-                </button>
-
-                {ticket.status !== "Cancelado" && (
-                  <button
-                    type="button"
-                    onClick={handleCancelTicket}
-                    className="px-4 py-2 rounded bg-slate-50 text-slate-700 border border-slate-200 hover:bg-slate-100 text-sm font-semibold flex items-center"
-                  >
-                    <Ban className="w-4 h-4 mr-2" />
-                    Cancelar Chamado
-                  </button>
-                )}
-              </div>
-            </section>
-          )}
-
-          <section className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-5">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-              <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider flex items-center">
-                <Wrench className="w-4 h-4 mr-2 text-[#13335a]" />
-                Acionamento Externo
-              </h3>
-
-              {externalAction.protocol && (
-                <span className="text-xs bg-slate-100 border border-slate-200 text-slate-700 px-3 py-1 rounded-full font-mono">
-                  Protocolo: {externalAction.protocol}
-                </span>
-              )}
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
-              <div>
-                <span className="block text-slate-500">Órgão/concessionária</span>
-                <span className="font-semibold text-slate-800">
-                  {externalAction.agency || "Não informado"}
-                </span>
-              </div>
-
-              <div>
-                <span className="block text-slate-500">Protocolo</span>
-                <span className="font-semibold text-slate-800">
-                  {externalAction.protocol || "Não informado"}
-                </span>
-              </div>
-
-              <div>
-                <span className="block text-slate-500">Data/hora</span>
-                <span className="font-semibold text-slate-800">
-                  {formatDateTime(externalAction.triggeredAt)}
-                </span>
-              </div>
-
-              <div>
-                <span className="block text-slate-500">Responsável</span>
-                <span className="font-semibold text-slate-800">
-                  {externalAction.responsible || "Não informado"}
-                </span>
-              </div>
-            </div>
-
-            {canEditExternalAction && (
-              <div className="pt-5 border-t border-slate-100">
-                <h4 className="font-semibold text-slate-700 mb-3 text-sm">
-                  Atualizar acionamento
-                </h4>
-
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1">
-                      Órgão/concessionária
-                    </label>
-
-                    <select
-                      className="w-full p-2 pr-8 border rounded bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#66b6e3]"
-                      value={externalDraft.agency}
-                      onChange={e =>
-                        setExternalDraft(prev => ({
-                          ...prev,
-                          agency: e.target.value
-                        }))
-                      }
-                    >
-                      <option value="">Selecione...</option>
-
-                      {AGENCIES.map(agency => (
-                        <option key={agency} value={agency}>
-                          {agency}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1">
-                      Protocolo
-                    </label>
-
-                    <input
-                      type="text"
-                      className="w-full p-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-[#66b6e3]"
-                      value={externalDraft.protocol}
-                      onChange={e =>
-                        setExternalDraft(prev => ({
-                          ...prev,
-                          protocol: e.target.value
-                        }))
-                      }
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1">
-                      Data/hora
-                    </label>
-
-                    <input
-                      type="datetime-local"
-                      className="w-full p-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-[#66b6e3]"
-                      value={externalDraft.triggeredAt}
-                      onChange={e =>
-                        setExternalDraft(prev => ({
-                          ...prev,
-                          triggeredAt: e.target.value
-                        }))
-                      }
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-600 mb-1">
-                      Responsável
-                    </label>
-
-                    <input
-                      type="text"
-                      className="w-full p-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-[#66b6e3]"
-                      value={externalDraft.responsible}
-                      onChange={e =>
-                        setExternalDraft(prev => ({
-                          ...prev,
-                          responsible: e.target.value
-                        }))
-                      }
-                    />
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleSaveExternalAction}
-                  className="mt-4 px-4 py-2 bg-[#13335a] text-white rounded hover:opacity-90 text-sm font-semibold flex items-center"
-                >
-                  <Save className="w-4 h-4 mr-2" />
-                  Salvar Acionamento
-                </button>
-              </div>
-            )}
-          </section>
-
-          <section className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-5">
+        {canManageAttendance && (
+          <section className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-6">
             <div>
               <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider flex items-center">
-                <CheckCircle2 className="w-4 h-4 mr-2 text-[#13335a]" />
-                Resolução e Encerramento
+                <ShieldAlert className="w-4 h-4 mr-2 text-[#13335a]" />
+                Gestão do Atendimento
               </h3>
-
               <p className="text-xs text-slate-500 mt-1">
-                Fluxo recomendado: registrar solução, marcar como resolvido, confirmar ciência da escola e encerrar formalmente.
+                Use esta área para acompanhar o andamento operacional. A resolução e o encerramento ficam no bloco específico abaixo.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
+            <div>
+              <h4 className="font-semibold text-slate-700 mb-2 text-sm">
+                Status da ocorrência
+              </h4>
+
+              <div className="flex flex-wrap gap-2">
+                {statusFlow.map((status, index) => {
+                  const isCurrentStatus = ticket.status === status;
+                  const isClosedStep = status === "Encerrado";
+                  const isDisabledStep = isTicketLocked || isClosedStep;
+
+                  let buttonClass = "bg-slate-100 text-slate-600 hover:bg-slate-200";
+
+                  if (isCurrentStatus && isClosedStep) {
+                    buttonClass = "bg-green-600 text-white ring-2 ring-green-200";
+                  } else if (isCurrentStatus) {
+                    buttonClass = "bg-[#13335a] text-white ring-2 ring-[#66b6e3]";
+                  } else if (isClosedStep) {
+                    buttonClass = "bg-slate-100 text-slate-400 cursor-not-allowed";
+                  }
+
+                  return (
+                    <React.Fragment key={status}>
+                      {index > 0 && (
+                        <span className="self-center text-slate-400 text-xs">{">"}</span>
+                      )}
+
+                      <button
+                        type="button"
+                        disabled={isDisabledStep}
+                        onClick={() => handleStatusChange(status)}
+                        className={`px-4 py-2 rounded text-sm font-medium transition disabled:opacity-80 disabled:cursor-not-allowed ${buttonClass}`}
+                      >
+                        {status}
+                      </button>
+                    </React.Fragment>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-5 text-sm">
               <div>
                 <span className="block text-slate-500">Resolvido em</span>
                 <span className="font-semibold text-slate-800">
@@ -1140,25 +807,126 @@ export default function TicketDetailsView({
                   {resolution.closedBy || "-"}
                 </span>
               </div>
+            </div>
 
-              <div className="md:col-span-4">
-                <span className="block text-slate-500">Solução aplicada</span>
-                <div className="font-semibold text-slate-800 bg-slate-50 border border-slate-100 rounded p-3 mt-1 whitespace-pre-wrap">
-                  {resolution.solutionApplied || "Ainda não registrada."}
+            <div className="border-t border-slate-100 pt-5 grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div>
+                <label className="block font-semibold text-slate-700 mb-2 text-sm">
+                  Prioridade
+                </label>
+                <select
+                  disabled={isTicketLocked}
+                  className="w-full p-2 pr-8 border rounded bg-white focus:outline-none focus:ring-2 focus:ring-[#66b6e3] disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
+                  value={ticket.priority || ""}
+                  onChange={e => handlePriorityChange(e.target.value)}
+                >
+                  <option value="">Selecione...</option>
+                  {PRIORITIES.map(priority => (
+                    <option key={priority.name} value={priority.name}>
+                      {priority.name} — SLA {priority.slaHours}h
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-2 text-sm">
+                  Impacto na operação escolar
+                </label>
+                <select
+                  disabled={isTicketLocked}
+                  className="w-full p-2 pr-8 border rounded bg-white focus:outline-none focus:ring-2 focus:ring-[#66b6e3] disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
+                  value={ticket.impact || ""}
+                  onChange={e => handleImpactChange(e.target.value)}
+                >
+                  <option value="">Selecione...</option>
+                  {IMPACTS.map(impact => (
+                    <option key={impact} value={impact}>
+                      {impact}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-5 space-y-5">
+              <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider flex items-center">
+                <FileText className="w-4 h-4 mr-2 text-[#13335a]" />
+                Ocorrência Registrada
+              </h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-x-10 gap-y-4 text-sm">
+                <div>
+                  <span className="block text-slate-500">Categoria</span>
+                  <span className="font-semibold text-slate-800">
+                    {ticket.category || "-"}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="block text-slate-500">Subcategoria</span>
+                  <span className="font-semibold text-slate-800">
+                    {ticket.subcategory || "-"}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="block text-slate-500">Impacto</span>
+                  <span className="font-semibold text-slate-800">
+                    {ticket.impact || "-"}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="block text-slate-500">Origem</span>
+                  <span className="font-semibold text-slate-800">
+                    {ticket.origin || "-"}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="block text-slate-500">Local afetado</span>
+                  <span className="font-semibold text-slate-800">
+                    {ticket.affectedLocation || "-"}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="block text-slate-500">Abrangência</span>
+                  <span className="font-semibold text-slate-800">
+                    {ticket.scope || "-"}
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="font-semibold text-slate-800 mb-2 flex items-center text-sm">
+                  <ClipboardList className="w-4 h-4 mr-2 text-[#13335a]" />
+                  Descrição da ocorrência
+                </h4>
+                <div className="bg-white p-4 rounded text-slate-700 whitespace-pre-wrap text-sm border border-slate-100">
+                  {ticket.description || "Sem descrição informada."}
                 </div>
               </div>
             </div>
 
             {canOperate && (
-              <div className="pt-5 border-t border-slate-100 space-y-4">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-5 space-y-4">
+                <div>
+                  <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider flex items-center">
+                    <CheckCircle2 className="w-4 h-4 mr-2 text-[#13335a]" />
+                    Resolução e Encerramento
+                  </h3>
+                </div>
+
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-1">
-                    Solução aplicada
+                    Descreva a solução aplicada
                   </label>
-
                   <textarea
                     rows={4}
-                    className="w-full p-2 border rounded resize-none text-sm focus:outline-none focus:ring-2 focus:ring-[#66b6e3]"
+                    disabled={isTicketLocked}
+                    className="w-full p-2 border rounded resize-none text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#66b6e3] disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
                     placeholder="Descreva a solução aplicada, serviço executado, retorno técnico ou providência adotada."
                     value={resolutionDraft.solutionApplied}
                     onChange={e =>
@@ -1175,10 +943,10 @@ export default function TicketDetailsView({
                     <label className="block text-xs font-semibold text-slate-600 mb-1">
                       Data/hora de resolução
                     </label>
-
                     <input
                       type="datetime-local"
-                      className="w-full p-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-[#66b6e3]"
+                      disabled={isTicketLocked}
+                      className="w-full p-2 border rounded text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#66b6e3] disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
                       value={resolutionDraft.resolvedAt}
                       onChange={e =>
                         setResolutionDraft(prev => ({
@@ -1193,10 +961,10 @@ export default function TicketDetailsView({
                     <label className="block text-xs font-semibold text-slate-600 mb-1">
                       Data/hora de encerramento
                     </label>
-
                     <input
                       type="datetime-local"
-                      className="w-full p-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-[#66b6e3]"
+                      disabled={isTicketLocked}
+                      className="w-full p-2 border rounded text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#66b6e3] disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
                       value={resolutionDraft.closedAt}
                       onChange={e =>
                         setResolutionDraft(prev => ({
@@ -1211,10 +979,10 @@ export default function TicketDetailsView({
                     <label className="block text-xs font-semibold text-slate-600 mb-1">
                       Encerrado por
                     </label>
-
                     <input
                       type="text"
-                      className="w-full p-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-[#66b6e3]"
+                      disabled={isTicketLocked}
+                      className="w-full p-2 border rounded text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#66b6e3] disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
                       value={resolutionDraft.closedBy}
                       onChange={e =>
                         setResolutionDraft(prev => ({
@@ -1226,83 +994,99 @@ export default function TicketDetailsView({
                   </div>
                 </div>
 
-                <label className="flex items-center space-x-2 text-sm text-slate-700 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    className="rounded text-[#13335a] focus:ring-[#13335a]"
-                    checked={resolutionDraft.confirmedBySchool}
-                    onChange={e =>
-                      setResolutionDraft(prev => ({
-                        ...prev,
-                        confirmedBySchool: e.target.checked
-                      }))
-                    }
-                  />
+                <div className="space-y-2">
+                  <label className="flex items-center space-x-2 text-sm text-slate-700 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      disabled={isTicketLocked}
+                      className="rounded text-[#13335a] focus:ring-[#13335a] disabled:cursor-not-allowed"
+                      checked={resolutionDraft.confirmedBySchool}
+                      onChange={e =>
+                        setResolutionDraft(prev => ({
+                          ...prev,
+                          confirmedBySchool: e.target.checked
+                        }))
+                      }
+                    />
+                    <span>Unidade escolar confirmou ciência/resolução</span>
+                  </label>
 
-                  <span>Unidade escolar confirmou ciência/resolução</span>
-                </label>
-
-                <div className="flex flex-wrap gap-3">
-                  <button
-                    type="button"
-                    onClick={handleSaveResolution}
-                    className="px-4 py-2 bg-slate-100 text-slate-700 rounded hover:bg-slate-200 text-sm font-semibold flex items-center"
-                  >
-                    <Save className="w-4 h-4 mr-2" />
-                    Salvar Resolução
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleMarkAsResolved}
-                    className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm font-semibold flex items-center"
-                  >
-                    <CheckCircle className="w-4 h-4 mr-2" />
-                    Marcar como Resolvido
-                  </button>
-
-                  {canConfirmSchoolResolution && (
-                    <button
-                      type="button"
-                      onClick={handleConfirmBySchool}
-                      className="px-4 py-2 bg-blue-50 text-blue-700 border border-blue-200 rounded hover:bg-blue-100 text-sm font-semibold flex items-center"
-                    >
-                      <School className="w-4 h-4 mr-2" />
-                      Confirmar pela Escola
-                    </button>
-                  )}
-
-                  {canCloseTicket && (
-                    <button
-                      type="button"
-                      onClick={handleCloseTicket}
-                      className="px-4 py-2 bg-[#13335a] text-white rounded hover:opacity-90 text-sm font-semibold flex items-center"
-                    >
-                      <CheckCircle2 className="w-4 h-4 mr-2" />
-                      Encerrar Chamado
-                    </button>
-                  )}
-
-                  {isClosedStatus && (
-                    <button
-                      type="button"
-                      onClick={handleReopenTicket}
-                      className="px-4 py-2 rounded bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 text-sm font-semibold flex items-center"
-                    >
-                      <RefreshCcw className="w-4 h-4 mr-2" />
-                      Reabrir Chamado
-                    </button>
-                  )}
+                  <label className="flex items-center space-x-2 text-sm text-slate-700 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      disabled={isTicketLocked || ticket.status === "Resolvido"}
+                      className="rounded text-[#13335a] focus:ring-[#13335a] disabled:cursor-not-allowed"
+                      checked={ticket.status === "Resolvido"}
+                      onChange={e => {
+                        if (e.target.checked) {
+                          handleMarkAsResolved();
+                        }
+                      }}
+                    />
+                    <span>Marcar como resolvido</span>
+                  </label>
                 </div>
               </div>
             )}
+
+            <div className="flex flex-wrap gap-3 pt-2">
+              {canCloseTicket && (
+                <button
+                  type="button"
+                  disabled={isTicketLocked}
+                  onClick={handleCloseTicket}
+                  className={`px-4 py-2 rounded text-sm font-semibold flex items-center disabled:cursor-not-allowed ${
+                    isTicketLocked
+                      ? "bg-green-600 text-white opacity-90"
+                      : "bg-[#13335a] text-white hover:opacity-90"
+                  }`}
+                >
+                  <CheckCircle2 className="w-4 h-4 mr-2" />
+                  {isTicketLocked ? "Chamado Encerrado" : "Encerrar Chamado"}
+                </button>
+              )}
+
+              {canOperate && (
+                <button
+                  type="button"
+                  disabled={isTicketLocked}
+                  onClick={handleSaveResolution}
+                  className="px-4 py-2 bg-slate-100 text-slate-700 border border-slate-200 rounded hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold flex items-center"
+                >
+                  <Save className="w-4 h-4 mr-2" />
+                  Salvar
+                </button>
+              )}
+
+              {ticket.status !== "Cancelado" && !isTicketLocked && canOperate && (
+                <button
+                  type="button"
+                  onClick={handleCancelTicket}
+                  className="px-4 py-2 rounded bg-slate-50 text-slate-700 border border-slate-200 hover:bg-slate-100 text-sm font-semibold flex items-center"
+                >
+                  <Ban className="w-4 h-4 mr-2" />
+                  Cancelar Chamado
+                </button>
+              )}
+
+              {canReopenTicket && (
+                <button
+                  type="button"
+                  onClick={handleReopenTicket}
+                  className="px-4 py-2 rounded bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 text-sm font-semibold flex items-center"
+                >
+                  <RefreshCcw className="w-4 h-4 mr-2" />
+                  Reabrir Chamado
+                </button>
+              )}
+            </div>
 
             {!canOperate && canConfirmSchoolResolution && (
               <div className="pt-5 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={handleConfirmBySchool}
-                  disabled={resolution.confirmedBySchool}
+                  disabled={resolution.confirmedBySchool || isTicketLocked}
                   className="px-4 py-2 bg-blue-50 text-blue-700 border border-blue-200 rounded hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold flex items-center"
                 >
                   <School className="w-4 h-4 mr-2" />
@@ -1313,110 +1097,345 @@ export default function TicketDetailsView({
               </div>
             )}
           </section>
+        )}
 
-          <section className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider flex items-center">
-                <Paperclip className="w-4 h-4 mr-2 text-[#13335a]" />
-                Evidências e Anexos
-              </h3>
+        <section className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-5">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+            <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider flex items-center">
+              <Wrench className="w-4 h-4 mr-2 text-[#13335a]" />
+              Acionamento Externo
+            </h3>
+
+            {externalAction.protocol && (
+              <span className="text-xs bg-slate-100 border border-slate-200 text-slate-700 px-3 py-1 rounded-full font-mono">
+                Protocolo: {externalAction.protocol}
+              </span>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
+            <div>
+              <span className="block text-slate-500">Órgão/concessionária</span>
+              <span className="font-semibold text-slate-800">
+                {externalAction.agency || "Não informado"}
+              </span>
+            </div>
+
+            <div>
+              <span className="block text-slate-500">Protocolo</span>
+              <span className="font-semibold text-slate-800">
+                {externalAction.protocol || "Não informado"}
+              </span>
+            </div>
+
+            <div>
+              <span className="block text-slate-500">Data/hora</span>
+              <span className="font-semibold text-slate-800">
+                {formatDateTime(externalAction.triggeredAt)}
+              </span>
+            </div>
+
+            <div>
+              <span className="block text-slate-500">Responsável</span>
+              <span className="font-semibold text-slate-800">
+                {externalAction.responsible || "Não informado"}
+              </span>
+            </div>
+          </div>
+
+          {canEditExternalAction && (
+            <div className="pt-5 border-t border-slate-100">
+              <h4 className="font-semibold text-slate-700 mb-3 text-sm">
+                Atualizar acionamento
+              </h4>
+
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">
+                    Órgão/concessionária
+                  </label>
+                  <select
+                    disabled={isTicketLocked}
+                    className="w-full p-2 pr-8 border rounded bg-white text-sm focus:outline-none focus:ring-2 focus:ring-[#66b6e3] disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
+                    value={externalDraft.agency}
+                    onChange={e =>
+                      setExternalDraft(prev => ({
+                        ...prev,
+                        agency: e.target.value
+                      }))
+                    }
+                  >
+                    <option value="">Selecione...</option>
+                    {AGENCIES.map(agency => (
+                      <option key={agency} value={agency}>
+                        {agency}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">
+                    Protocolo
+                  </label>
+                  <input
+                    type="text"
+                    disabled={isTicketLocked}
+                    className="w-full p-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-[#66b6e3] disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
+                    value={externalDraft.protocol}
+                    onChange={e =>
+                      setExternalDraft(prev => ({
+                        ...prev,
+                        protocol: e.target.value
+                      }))
+                    }
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">
+                    Data/hora
+                  </label>
+                  <input
+                    type="datetime-local"
+                    disabled={isTicketLocked}
+                    className="w-full p-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-[#66b6e3] disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
+                    value={externalDraft.triggeredAt}
+                    onChange={e =>
+                      setExternalDraft(prev => ({
+                        ...prev,
+                        triggeredAt: e.target.value
+                      }))
+                    }
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">
+                    Responsável
+                  </label>
+                  <input
+                    type="text"
+                    disabled={isTicketLocked}
+                    className="w-full p-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-[#66b6e3] disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
+                    value={externalDraft.responsible}
+                    onChange={e =>
+                      setExternalDraft(prev => ({
+                        ...prev,
+                        responsible: e.target.value
+                      }))
+                    }
+                  />
+                </div>
+              </div>
 
               <button
                 type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="text-xs bg-[#13335a]/10 text-[#13335a] hover:bg-[#13335a]/20 px-3 py-1.5 rounded font-semibold transition"
+                disabled={isTicketLocked}
+                onClick={handleSaveExternalAction}
+                className="mt-4 px-4 py-2 bg-[#13335a] text-white rounded hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold flex items-center"
               >
-                + Adicionar Arquivo
+                <Save className="w-4 h-4 mr-2" />
+                Salvar Acionamento
               </button>
+            </div>
+          )}
+        </section>
 
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileUpload}
-                className="hidden"
-              />
+        {canManageAttendance && (
+          <section className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-5">
+            <div>
+              <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider flex items-center">
+                <Link className="w-4 h-4 mr-2 text-[#13335a]" />
+                Recorrência e Vínculo
+              </h3>
+              <p className="text-xs text-slate-500 mt-1">
+                Use esta área para acompanhar o andamento operacional. A resolução e o encerramento ficam no bloco específico acima.
+              </p>
             </div>
 
-            {attachments.length === 0 ? (
-              <p className="text-xs text-slate-400 italic">
-                Nenhum arquivo anexado a este chamado.
-              </p>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {attachments.map(att => (
-                  <div
-                    key={att.id}
-                    className="flex items-center justify-between p-2 border rounded border-slate-200 bg-slate-50"
-                  >
-                    <div className="flex items-center overflow-hidden mr-2">
-                      {att.type?.startsWith("image/") ? (
-                        <ImageIcon className="w-4 h-4 text-blue-500 mr-2 flex-shrink-0" />
-                      ) : (
-                        <FileIcon className="w-4 h-4 text-slate-500 mr-2 flex-shrink-0" />
-                      )}
+            <div className="p-4 rounded-lg border border-slate-200 bg-slate-50 space-y-4">
+              <h4 className="font-semibold text-slate-700 text-sm flex items-center">
+                <Link className="w-4 h-4 mr-2 text-[#13335a]" />
+                Recorrência e vínculo
+              </h4>
 
-                      <span
-                        className="text-xs text-slate-700 truncate font-medium"
-                        title={att.name}
-                      >
-                        {att.name}
-                      </span>
-                    </div>
+              <div className="flex flex-col md:flex-row gap-4 md:items-end">
+                <label className="flex items-center space-x-2 text-sm text-slate-700 cursor-pointer md:pb-2">
+                  <input
+                    type="checkbox"
+                    disabled={isTicketLocked}
+                    className="rounded text-[#13335a] focus:ring-[#13335a] disabled:cursor-not-allowed"
+                    checked={recurrenceDraft.isRecurring}
+                    onChange={e =>
+                      setRecurrenceDraft(prev => ({
+                        ...prev,
+                        isRecurring: e.target.checked
+                      }))
+                    }
+                  />
+                  <span>Problema recorrente</span>
+                </label>
 
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => setPreviewFile(att)}
-                        className="p-1.5 text-slate-400 hover:text-[#13335a] bg-white border rounded shadow-sm transition"
-                        title="Visualizar/Baixar"
-                      >
-                        <Eye className="w-3 h-3" />
-                      </button>
+                <div className="flex-1">
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">
+                    Chamado vinculado
+                  </label>
+                  <input
+                    type="text"
+                    disabled={isTicketLocked}
+                    className="w-full p-2 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-[#66b6e3] disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
+                    placeholder="Ex: INF-2026-000245"
+                    value={recurrenceDraft.linkedTicketId}
+                    onChange={e =>
+                      setRecurrenceDraft(prev => ({
+                        ...prev,
+                        linkedTicketId: e.target.value
+                      }))
+                    }
+                  />
+                </div>
 
-                      <button
-                        type="button"
-                        onClick={() => setFileToDelete(att)}
-                        className="p-1.5 text-slate-400 hover:text-red-600 bg-white border rounded shadow-sm transition"
-                        title="Excluir"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                <button
+                  type="button"
+                  disabled={isTicketLocked}
+                  onClick={handleSaveRecurrence}
+                  className="px-4 py-2 bg-white text-[#13335a] border border-[#13335a] rounded hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold flex items-center justify-center"
+                >
+                  <Save className="w-4 h-4 mr-2" />
+                  Salvar
+                </button>
               </div>
-            )}
-          </section>
+            </div>
 
-          <section className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-4">
-            <h3 className="font-bold text-slate-800 text-sm border-b pb-2 flex items-center uppercase tracking-wider">
-              <History className="w-4 h-4 mr-2 text-[#13335a]" />
-              Histórico
+            <div className="flex flex-wrap gap-3 pt-2">
+              <button
+                type="button"
+                disabled={isTicketLocked}
+                onClick={handleRegisterReiteration}
+                className="px-4 py-2 rounded bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-semibold flex items-center"
+              >
+                <RotateCcw className="w-4 h-4 mr-2" />
+                Registrar Reiteração
+              </button>
+
+              {ticket.status !== "Cancelado" && !isTicketLocked && (
+                <button
+                  type="button"
+                  onClick={handleCancelTicket}
+                  className="px-4 py-2 rounded bg-slate-50 text-slate-700 border border-slate-200 hover:bg-slate-100 text-sm font-semibold flex items-center"
+                >
+                  <Ban className="w-4 h-4 mr-2" />
+                  Cancelar Chamado
+                </button>
+              )}
+            </div>
+          </section>
+        )}
+
+        <section className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider flex items-center">
+              <Paperclip className="w-4 h-4 mr-2 text-[#13335a]" />
+              Evidências e Anexos
             </h3>
 
-            {localHistory.length === 0 ? (
-              <p className="text-xs text-slate-400 italic">
-                Nenhum evento registrado no histórico.
-              </p>
-            ) : (
-              <div className="relative border-l-2 border-slate-200 pl-4 ml-2 space-y-4 max-h-72 overflow-y-auto pt-1">
-                {localHistory.map((log, i) => (
-                  <div key={log.id || i} className="relative">
-                    <span className="absolute -left-[21px] top-1 bg-white w-2.5 h-2.5 rounded-full border-2 border-[#13335a]" />
+            <button
+              type="button"
+              disabled={isTicketLocked}
+              onClick={() => fileInputRef.current?.click()}
+              className="text-xs bg-[#13335a]/10 text-[#13335a] hover:bg-[#13335a]/20 px-3 py-1.5 rounded font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              + Adicionar Arquivo
+            </button>
 
-                    <div className="text-[10px] text-slate-400 font-medium">
-                      {formatDateTime(log.date)}
-                    </div>
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileUpload}
+              className="hidden"
+            />
+          </div>
 
-                    <div className="text-xs text-slate-700 font-medium mt-0.5">
-                      {log.message}
-                    </div>
+          {attachments.length === 0 ? (
+            <p className="text-xs text-slate-400 italic">
+              Nenhum arquivo anexado a este chamado.
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {attachments.map(att => (
+                <div
+                  key={att.id}
+                  className="flex items-center justify-between p-2 border rounded border-slate-200 bg-slate-50"
+                >
+                  <div className="flex items-center overflow-hidden mr-2">
+                    {att.type?.startsWith("image/") ? (
+                      <ImageIcon className="w-4 h-4 text-blue-500 mr-2 flex-shrink-0" />
+                    ) : (
+                      <FileIcon className="w-4 h-4 text-slate-500 mr-2 flex-shrink-0" />
+                    )}
+                    <span
+                      className="text-xs text-slate-700 truncate font-medium"
+                      title={att.name}
+                    >
+                      {att.name}
+                    </span>
                   </div>
-                ))}
-              </div>
-            )}
-          </section>
-        </div>
+
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setPreviewFile(att)}
+                      className="p-1.5 text-slate-400 hover:text-[#13335a] bg-white border rounded shadow-sm transition"
+                      title="Visualizar/Baixar"
+                    >
+                      <Eye className="w-3 h-3" />
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={isTicketLocked}
+                      onClick={() => setFileToDelete(att)}
+                      className="p-1.5 text-slate-400 hover:text-red-600 bg-white border rounded shadow-sm transition disabled:opacity-40 disabled:cursor-not-allowed"
+                      title="Excluir"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-4">
+          <h3 className="font-bold text-slate-800 text-sm border-b pb-2 flex items-center uppercase tracking-wider">
+            <History className="w-4 h-4 mr-2 text-[#13335a]" />
+            Histórico
+          </h3>
+
+          {localHistory.length === 0 ? (
+            <p className="text-xs text-slate-400 italic">
+              Nenhum evento registrado no histórico.
+            </p>
+          ) : (
+            <div className="relative border-l-2 border-slate-200 pl-4 ml-2 space-y-4 max-h-72 overflow-y-auto pt-1">
+              {localHistory.map((log, i) => (
+                <div key={log.id || i} className="relative">
+                  <span className="absolute -left-[21px] top-1 bg-white w-2.5 h-2.5 rounded-full border-2 border-[#13335a]" />
+
+                  <div className="text-[10px] text-slate-400 font-medium">
+                    {formatDateTime(log.date)}
+                  </div>
+
+                  <div className="text-xs text-slate-700 font-medium mt-0.5">
+                    {log.message}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
       </div>
 
       {previewFile && (
@@ -1452,12 +1471,9 @@ export default function TicketDetailsView({
               ) : (
                 <div className="text-center p-8 bg-white rounded-lg shadow-sm">
                   <FileIcon className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-
                   <p className="text-slate-600 mb-4 font-medium">
-                    A visualização direta deste tipo de arquivo pode não ser
-                    suportada pelo navegador.
+                    A visualização direta deste tipo de arquivo pode não ser suportada pelo navegador.
                   </p>
-
                   <a
                     href={previewFile.url}
                     download={previewFile.name}
@@ -1483,8 +1499,7 @@ export default function TicketDetailsView({
 
             <div className="p-4">
               <p className="text-sm text-slate-600 mb-6">
-                Tem certeza que deseja remover o arquivo {" "}
-                <strong>{fileToDelete.name}</strong> deste chamado?
+                Tem certeza que deseja remover o arquivo <strong>{fileToDelete.name}</strong> deste chamado?
               </p>
 
               <div className="flex justify-end gap-3">
