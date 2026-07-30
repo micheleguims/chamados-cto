@@ -606,40 +606,53 @@ export default function TicketDetailsView({
         </button>
 
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-          <section className="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-            <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider mb-4 flex items-center">
-              <Layers className="w-4 h-4 mr-2 text-[#13335a]" />
-              Resumo do Chamado
-            </h3>
+          <section className="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-slate-200 min-h-[220px] flex flex-col">
+            <div className="flex items-start justify-between gap-4 mb-4">
+              <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider flex items-center">
+                <Layers className="w-4 h-4 mr-2 text-[#13335a]" />
+                Resumo do Chamado
+              </h3>
 
-            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-5">
-              <div className="min-w-0">
-                <div className="flex flex-wrap gap-2 mb-3">
-                  <Badge colorClass={getStatusColor(ticket.status)}>
-                    {ticket.status}
+              <p className="text-slate-500 font-mono text-sm shrink-0">
+                {ticket.id}
+              </p>
+            </div>
+
+            <div className="flex-1">
+              <div className="flex flex-wrap gap-2 mb-3">
+                <Badge colorClass={getStatusColor(ticket.status)}>
+                  {ticket.status}
+                </Badge>
+
+                {ticket.priority && (
+                  <Badge colorClass={getPriorityColor(ticket.priority)}>
+                    {ticket.priority}
                   </Badge>
+                )}
 
-                  {ticket.priority && (
-                    <Badge colorClass={getPriorityColor(ticket.priority)}>
-                      {ticket.priority}
-                    </Badge>
-                  )}
+                {recurrence?.isRecurring && (
+                  <span className="px-2 py-1 rounded border text-xs bg-purple-50 text-purple-700 border-purple-200 font-semibold inline-flex items-center">
+                    <RefreshCcw className="w-3 h-3 mr-1" />
+                    Recorrente
+                  </span>
+                )}
+              </div>
 
-                  {recurrence?.isRecurring && (
-                    <span className="px-2 py-1 rounded border text-xs bg-purple-50 text-purple-700 border-purple-200 font-semibold inline-flex items-center">
-                      <RefreshCcw className="w-3 h-3 mr-1" />
-                      Recorrente
-                    </span>
-                  )}
-                </div>
+              <h1 className="text-2xl font-bold text-slate-800 leading-tight break-words overflow-hidden max-h-16">
+                {ticket.title || "Chamado de infraestrutura"}
+              </h1>
+            </div>
 
-                <h1 className="text-2xl font-bold text-slate-800 break-words">
-                  {ticket.title || "Chamado de infraestrutura"}
-                </h1>
-
-                <p className="text-slate-500 font-mono text-sm mt-1">
-                  {ticket.id}
-                </p>
+            <div className="mt-6 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+              <div>
+                {slaInfo && (
+                  <div
+                    className={`px-3 py-2 rounded-lg border text-sm inline-flex items-center ${slaInfo.classes}`}
+                  >
+                    <AlertTriangle className="w-4 h-4 mr-2" />
+                    {slaInfo.text}
+                  </div>
+                )}
               </div>
 
               <div className="text-sm text-slate-500 sm:text-right shrink-0">
@@ -647,23 +660,16 @@ export default function TicketDetailsView({
                   <Clock className="w-4 h-4 mr-1 text-slate-400" />
                   {getOpenedLabel(ticket.createdAt)}
                 </div>
+
                 <div className="text-xs mt-1">
                   Aberto em {formatDateTime(ticket.createdAt)}
                 </div>
+
                 <div className="text-xs mt-1">
                   Atualizado em {formatDateTime(ticket.updatedAt)}
                 </div>
               </div>
             </div>
-
-            {slaInfo && (
-              <div
-                className={`px-3 py-2 rounded-lg border text-sm inline-flex items-center ${slaInfo.classes}`}
-              >
-                <AlertTriangle className="w-4 h-4 mr-2" />
-                {slaInfo.text}
-              </div>
-            )}
           </section>
 
           <section className="lg:col-span-3 bg-white p-6 rounded-xl shadow-sm border border-slate-200">
