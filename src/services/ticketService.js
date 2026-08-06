@@ -34,14 +34,27 @@ function mapRowToTicket(row) {
     title: row.title,
     description: row.description,
     impact: row.impact,
+
+    serviceType: row.service_type,
+    utilityAccountId: row.utility_account_id,
+    responsibleSector: row.responsible_sector,
+
+    schoolPhoneSecondary: row.school_phone_secondary,
+    contactNotes: row.contact_notes,
+    referencePoint: row.reference_point,
+
     school: {
       name: row.school_name,
       code: row.school_code,
       cre: row.school_cre,
       address: row.school_address,
       neighborhood: row.school_neighborhood,
-      phone: row.school_phone
+      phone: row.school_phone,
+      phoneSecondary: row.school_phone_secondary,
+      contactNotes: row.contact_notes,
+      referencePoint: row.reference_point,
     },
+
     affectedLocation: row.affected_location,
     scope: row.scope,
     origin: row.origin,
@@ -51,7 +64,7 @@ function mapRowToTicket(row) {
     recurrence: row.recurrence || {},
     attachments: row.attachments || [],
     comments: row.comments || [],
-    history: row.history || []
+    history: row.history || [],
   };
 }
 
@@ -67,12 +80,27 @@ function mapTicketToRow(ticket) {
     title: ticket.title,
     description: ticket.description,
     impact: ticket.impact,
+
+    service_type: ticket.serviceType || null,
+    utility_account_id: ticket.utilityAccountId || null,
+    responsible_sector: ticket.responsibleSector || null,
+
     school_name: ticket.school?.name || null,
     school_code: ticket.school?.code || null,
     school_cre: ticket.school?.cre || null,
     school_address: ticket.school?.address || null,
     school_neighborhood: ticket.school?.neighborhood || null,
     school_phone: ticket.school?.phone || null,
+
+    school_phone_secondary:
+      ticket.schoolPhoneSecondary || ticket.school?.phoneSecondary || null,
+
+    contact_notes:
+      ticket.contactNotes || ticket.school?.contactNotes || null,
+
+    reference_point:
+      ticket.referencePoint || ticket.school?.referencePoint || null,
+
     affected_location: ticket.affectedLocation,
     scope: ticket.scope,
     origin: ticket.origin,
@@ -82,7 +110,7 @@ function mapTicketToRow(ticket) {
     recurrence: ticket.recurrence || {},
     attachments: ticket.attachments || [],
     comments: ticket.comments || [],
-    history: ticket.history || []
+    history: ticket.history || [],
   };
 }
 

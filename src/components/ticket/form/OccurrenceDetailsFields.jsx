@@ -1,0 +1,1 @@
+// Futuramente virá de OccurrenceSection.jsx

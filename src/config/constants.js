@@ -90,7 +90,7 @@ export const AGENCIES = [
 
 export const INFRASTRUCTURE_TREE = {
   Água: [
-    "Falta d’água",
+    "FALTA D'ÁGUA / CARRO PIPA",
     "Baixa pressão",
     "Cisterna sem abastecimento",
     "Carro-pipa",

@@ -4,16 +4,11 @@
 // ==========================================
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-
 import { getSchools } from "../services/schoolService";
-
-import {
-  CRES,
-  INFRASTRUCTURE_TREE,
-  PRIORITIES,
-  IMPACTS,
-  AGENCIES
-} from "../config/constants";
+import { supabase } from "../services/supabaseClient";
+import { getOccurrenceTemplates } from "../services/occurrenceTemplateService";
+import OccurrenceSection from "../components/ticket/form/OccurrenceSection";
+import { PRIORITIES } from "../config/constants";
 
 import {
   PlusCircle,
@@ -23,13 +18,8 @@ import {
   FileIcon,
   AlertTriangle,
   Trash2,
-  Building2,
   MapPin,
-  School,
-  Phone,
-  ClipboardList,
-  Siren,
-  Wrench
+  Phone
 } from "lucide-react";
 
 export default function TicketFormView({ currentUser, onSubmit, onCancel }) {
@@ -47,7 +37,6 @@ export default function TicketFormView({ currentUser, onSubmit, onCancel }) {
   const [schools, setSchools] = useState([]);
   const [schoolsLoading, setSchoolsLoading] = useState(false);
   const [schoolsError, setSchoolsError] = useState("");
-
   const [selectedSchoolId, setSelectedSchoolId] = useState("");
 
   const [schoolData, setSchoolData] = useState({
@@ -56,8 +45,25 @@ export default function TicketFormView({ currentUser, onSubmit, onCancel }) {
     name: "",
     address: "",
     neighborhood: "",
-    phone: ""
+    phone: "",
+    phoneSecondary: "",
+    referencePoint: "",
+    contactNotes: "",
+    installationNotes: "",
   });
+
+  // ----------------------------------------
+  // ESTADOS DAS CONCESSIONÁRIAS DA ESCOLA
+  // TABELA: school_utility_accounts
+  // ----------------------------------------
+  const [schoolUtilities, setSchoolUtilities] = useState({
+    agua: null,
+    esgoto: null,
+    energia: null,
+  });
+
+  const [utilitiesLoading, setUtilitiesLoading] = useState(false);
+  const [utilitiesError, setUtilitiesError] = useState("");
 
   // ----------------------------------------
   // ESTADOS DA CLASSIFICAÇÃO
@@ -66,25 +72,38 @@ export default function TicketFormView({ currentUser, onSubmit, onCancel }) {
   const [subcategory, setSubcategory] = useState("");
 
   // ----------------------------------------
+  // ESTADOS DOS TEMPLATES DE OCORRÊNCIA
+  // TABELA: occurrence_templates
+  // ----------------------------------------
+  const [occurrenceTemplates, setOccurrenceTemplates] = useState([]);
+  const [templatesLoading, setTemplatesLoading] = useState(false);
+
+  // ----------------------------------------
   // ESTADOS DA OCORRÊNCIA
   // ----------------------------------------
   const [occurrenceData, setOccurrenceData] = useState({
     title: "",
     priority: "",
+    deadlineDays: "",
     impact: "",
     affectedLocation: "",
     scope: "",
-    description: ""
+    description: "",
   });
 
   // ----------------------------------------
   // ESTADOS DO ACIONAMENTO EXTERNO
+  // Agora recebe dados vindos da tabela school_utility_accounts
   // ----------------------------------------
   const [externalAction, setExternalAction] = useState({
     agency: "",
     protocol: "",
     triggeredAt: "",
-    responsible: ""
+    responsible: "",
+    serviceType: "",
+    utilityAccountId: null,
+    registrationNumber: "",
+    tension: "",
   });
 
   // ----------------------------------------
@@ -94,12 +113,62 @@ export default function TicketFormView({ currentUser, onSubmit, onCancel }) {
   const [fileToDelete, setFileToDelete] = useState(null);
 
   // ----------------------------------------
-  // SUBCATEGORIAS DA ÁRVORE DE INFRA
+  // OPÇÕES DE OCORRÊNCIA VINDAS DO BANCO
+  // TABELA: public.occurrence_templates
   // ----------------------------------------
+  const SERVICE_TYPE_LABELS = {
+    agua: "Água",
+    esgoto: "Esgoto",
+    energia: "Energia",
+    outro: "Outro",
+  };
+
+  const getServiceTypeFromCategory = (value) => {
+    const map = {
+      Água: "agua",
+      Agua: "agua",
+      água: "agua",
+      agua: "agua",
+      Esgoto: "esgoto",
+      esgoto: "esgoto",
+      Energia: "energia",
+      energia: "energia",
+      Outro: "outro",
+      outro: "outro",
+    };
+
+    return map[value] || value;
+  };
+
+  const categoryOptions = useMemo(() => {
+    const serviceTypes = [
+      ...new Set(
+        occurrenceTemplates
+          .filter((item) => item.active !== false)
+          .map((item) => item.service_type)
+          .filter(Boolean)
+      ),
+    ];
+
+    return serviceTypes.map((serviceType) => ({
+      serviceType,
+      label: SERVICE_TYPE_LABELS[serviceType] || serviceType,
+    }));
+  }, [occurrenceTemplates]);
+
   const subcategoryOptions = useMemo(() => {
     if (!category) return [];
-    return INFRASTRUCTURE_TREE[category] || [];
-  }, [category]);
+
+    const selectedServiceType = getServiceTypeFromCategory(category);
+
+    return occurrenceTemplates
+      .filter(
+        (item) =>
+          item.active !== false &&
+          item.service_type === selectedServiceType
+      )
+      .map((item) => item.occurrence_name);
+  }, [category, occurrenceTemplates]);
 
   // ----------------------------------------
   // GERAÇÃO DO NÚMERO DO CHAMADO
@@ -107,8 +176,50 @@ export default function TicketFormView({ currentUser, onSubmit, onCancel }) {
   const generateTicketId = () => {
     const year = new Date().getFullYear();
     const randomNumber = Math.floor(Math.random() * 999999) + 1;
-
     return `INF-${year}-${String(randomNumber).padStart(6, "0")}`;
+  };
+
+  // ----------------------------------------
+  // NORMALIZAÇÃO DE TEXTO
+  // ----------------------------------------
+  const normalizeText = (value) => {
+    return String(value || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+  };
+
+  // ----------------------------------------
+  // IDENTIFICAR TIPO DE SERVIÇO A PARTIR DA CLASSIFICAÇÃO
+  // ----------------------------------------
+  const detectServiceType = (selectedCategory, selectedSubcategory) => {
+    const text = normalizeText(`${selectedCategory || ""} ${selectedSubcategory || ""}`);
+
+    if (
+      text.includes("esgoto") ||
+      text.includes("saneamento")
+    ) {
+      return "esgoto";
+    }
+
+    if (
+      text.includes("agua") ||
+      text.includes("abastecimento") ||
+      text.includes("hidraul")
+    ) {
+      return "agua";
+    }
+
+    if (
+      text.includes("energia") ||
+      text.includes("eletrica") ||
+      text.includes("luz") ||
+      text.includes("queda de energia")
+    ) {
+      return "energia";
+    }
+
+    return "outro";
   };
 
   // ----------------------------------------
@@ -135,6 +246,121 @@ export default function TicketFormView({ currentUser, onSubmit, onCancel }) {
   }, []);
 
   // ----------------------------------------
+  // CARREGAR CONCESSIONÁRIAS DA ESCOLA
+  // TABELA: public.school_utility_accounts
+  // ----------------------------------------
+  useEffect(() => {
+    async function loadUtilities() {
+      if (!schoolData.code) {
+        setSchoolUtilities({
+          agua: null,
+          esgoto: null,
+          energia: null,
+        });
+
+        setExternalAction((prev) => ({
+          ...prev,
+          agency: "",
+          serviceType: "",
+          utilityAccountId: null,
+          registrationNumber: "",
+          tension: "",
+        }));
+
+        return;
+      }
+
+      try {
+        setUtilitiesLoading(true);
+        setUtilitiesError("");
+
+        const { data, error } = await supabase
+          .from("school_utility_accounts")
+          .select(
+            "id, school_code, service_type, concessionaire, registration_number, tension, source_sheet, active"
+          )
+          .eq("school_code", schoolData.code)
+          .eq("active", true);
+
+        //teste 2
+        console.log("Resultado bruto school_utility_accounts:", data);
+        console.log("Erro school_utility_accounts:", error);
+
+        if (error) {
+          throw error;
+        }
+
+        const utilities = {
+          agua: null,
+          esgoto: null,
+          energia: null,
+        };
+
+        (data || []).forEach((item) => {
+          if (item.service_type === "agua") {
+            utilities.agua = item;
+          }
+
+          if (item.service_type === "esgoto") {
+            utilities.esgoto = item;
+          }
+
+          if (item.service_type === "energia") {
+            utilities.energia = item;
+          }
+        });
+
+        //teste 3
+        console.log("Concessionárias agrupadas:", utilities);
+
+        setSchoolUtilities(utilities);
+      } catch (error) {
+        console.error("Erro ao carregar concessionárias da escola:", error);
+        setUtilitiesError("Não foi possível carregar os dados de concessionária da unidade.");
+        setSchoolUtilities({
+          agua: null,
+          esgoto: null,
+          energia: null,
+        });
+      } finally {
+        setUtilitiesLoading(false);
+      }
+    }
+
+    loadUtilities();
+  }, [schoolData.code]);
+
+  // ----------------------------------------
+  // CARREGAR TEMPLATES DE OCORRÊNCIA
+  // TABELA: public.occurrence_templates
+  // ----------------------------------------
+  useEffect(() => {
+    async function loadOccurrenceTemplates() {
+      try {
+        setTemplatesLoading(true);
+
+        const data = await getOccurrenceTemplates();
+
+        setOccurrenceTemplates(data || []);
+
+        console.log(
+          "Templates de ocorrência:",
+          data
+        );
+      } catch (error) {
+        console.error(
+          "Erro ao carregar templates de ocorrência:",
+          error
+        );
+      } finally {
+        setTemplatesLoading(false);
+      }
+    }
+
+    loadOccurrenceTemplates();
+  }, []);
+
+  // ----------------------------------------
   // PREENCHIMENTO AUTOMÁTICO PARA PERFIL ESCOLA
   // ----------------------------------------
   useEffect(() => {
@@ -143,27 +369,27 @@ export default function TicketFormView({ currentUser, onSubmit, onCancel }) {
     const currentSchoolCode = currentUser?.schoolCode;
 
     if (!currentSchoolCode) {
-      setSchoolData(prev => ({
+      setSchoolData((prev) => ({
         ...prev,
         cre: currentUser?.cre || currentUser?.sector || prev.cre || "",
-        code: prev.code || ""
+        code: prev.code || "",
       }));
 
       return;
     }
 
     const school = schools.find(
-      item => String(item.code) === String(currentSchoolCode)
+      (item) => String(item.code) === String(currentSchoolCode)
     );
 
     // Enquanto a lista ainda não carregou, mantém pelo menos CRE e código do login.
     if (!school) {
       setSelectedSchoolId("");
 
-      setSchoolData(prev => ({
+      setSchoolData((prev) => ({
         ...prev,
         cre: currentUser?.cre || currentUser?.sector || prev.cre || "",
-        code: currentSchoolCode || prev.code || ""
+        code: currentSchoolCode || prev.code || "",
       }));
 
       return;
@@ -177,7 +403,11 @@ export default function TicketFormView({ currentUser, onSubmit, onCancel }) {
       name: school.name || "",
       address: school.address || "",
       neighborhood: school.neighborhood || "",
-      phone: school.phone || ""
+      phone: school.phone || "",
+      phoneSecondary: school.phone_secondary || "",
+      referencePoint: school.reference_point || "",
+      contactNotes: school.contact_notes || "",
+      installationNotes: school.installation_notes || "",
     });
   }, [schools, currentUser, isSchoolUser]);
 
@@ -198,14 +428,18 @@ export default function TicketFormView({ currentUser, onSubmit, onCancel }) {
         name: "",
         address: "",
         neighborhood: "",
-        phone: ""
+        phone: "",
+        phoneSecondary: "",
+        referencePoint: "",
+        contactNotes: "",
+        installationNotes: "",
       });
 
       return;
     }
 
     const school = schools.find(
-      item => String(item.id) === String(schoolId)
+      (item) => String(item.id) === String(schoolId)
     );
 
     if (!school) return;
@@ -216,18 +450,22 @@ export default function TicketFormView({ currentUser, onSubmit, onCancel }) {
       name: school.name || "",
       address: school.address || "",
       neighborhood: school.neighborhood || "",
-      phone: school.phone || ""
+      phone: school.phone || "",
+      phoneSecondary: school.phone_secondary || "",
+      referencePoint: school.reference_point || "",
+      contactNotes: school.contact_notes || "",
+      installationNotes: school.installation_notes || "",
     });
   };
 
   // ----------------------------------------
   // ALTERAÇÃO DOS DADOS DA ESCOLA
-  // Usado apenas para perfis que podem editar.
+  // Usado para telefone, referência e contatos editáveis no chamado.
   // ----------------------------------------
   const handleSchoolChange = (field, value) => {
-    setSchoolData(prev => ({
+    setSchoolData((prev) => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
   };
 
@@ -235,9 +473,9 @@ export default function TicketFormView({ currentUser, onSubmit, onCancel }) {
   // ALTERAÇÃO DA OCORRÊNCIA
   // ----------------------------------------
   const handleOccurrenceChange = (field, value) => {
-    setOccurrenceData(prev => ({
+    setOccurrenceData((prev) => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
   };
 
@@ -245,11 +483,97 @@ export default function TicketFormView({ currentUser, onSubmit, onCancel }) {
   // ALTERAÇÃO DO ACIONAMENTO EXTERNO
   // ----------------------------------------
   const handleExternalActionChange = (field, value) => {
-    setExternalAction(prev => ({
+    setExternalAction((prev) => ({
       ...prev,
-      [field]: value
+      [field]: value,
     }));
   };
+
+  // ----------------------------------------
+  // ATUALIZAR CONCESSIONÁRIA COM BASE NA CLASSIFICAÇÃO
+  // ----------------------------------------
+  useEffect(() => {
+    const serviceType = detectServiceType(category, subcategory);
+
+    if (!category && !subcategory) {
+      setExternalAction((prev) => ({
+        ...prev,
+        serviceType: "",
+        utilityAccountId: null,
+        agency: "",
+        registrationNumber: "",
+        tension: "",
+      }));
+
+      return;
+    }
+
+    if (serviceType === "outro") {
+      setExternalAction((prev) => ({
+        ...prev,
+        serviceType: "outro",
+        utilityAccountId: null,
+        agency: "",
+        registrationNumber: "",
+        tension: "",
+      }));
+
+      return;
+    }
+
+    const selectedUtility = schoolUtilities[serviceType];
+
+    if (!selectedUtility) {
+      setExternalAction((prev) => ({
+        ...prev,
+        serviceType,
+        utilityAccountId: null,
+        agency: "",
+        registrationNumber: "",
+        tension: "",
+      }));
+
+      return;
+    }
+
+    setExternalAction((prev) => ({
+      ...prev,
+      serviceType,
+      utilityAccountId: selectedUtility.id || null,
+      agency: selectedUtility.concessionaire || "",
+      registrationNumber: selectedUtility.registration_number || "",
+      tension: selectedUtility.tension || "",
+    }));
+  }, [category, subcategory, schoolUtilities]);
+
+  // ----------------------------------------
+  // PREENCHER CRITICIDADE E PRAZO
+  // COM BASE NA SUBCATEGORIA
+  // ----------------------------------------
+  useEffect(() => {
+
+    if (!subcategory || occurrenceTemplates.length === 0) {
+      return;
+    }
+
+    const template = occurrenceTemplates.find(
+      (item) =>
+        item.occurrence_name === subcategory
+    );
+
+    if (!template) {
+      //teste
+      console.log("Nenhum template encontrado para:", subcategory);
+      return;
+    }
+
+    setOccurrenceData((prev) => ({
+      ...prev,
+      priority: template.criticality || "",
+      deadlineDays: template.deadline_days ?? "",
+    }));
+
+  }, [subcategory, occurrenceTemplates]);
 
   // ----------------------------------------
   // UPLOAD LOCAL DE ANEXO
@@ -266,10 +590,10 @@ export default function TicketFormView({ currentUser, onSubmit, onCancel }) {
       name: file.name,
       type: file.type || "application/octet-stream",
       size: file.size,
-      url: URL.createObjectURL(file)
+      url: URL.createObjectURL(file),
     };
 
-    setAttachments(prev => [...prev, newAttachment]);
+    setAttachments((prev) => [...prev, newAttachment]);
 
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -280,7 +604,7 @@ export default function TicketFormView({ currentUser, onSubmit, onCancel }) {
   // EXCLUIR ANEXO
   // ----------------------------------------
   const confirmDeleteFile = (id) => {
-    setAttachments(prev => prev.filter(att => att.id !== id));
+    setAttachments((prev) => prev.filter((att) => att.id !== id));
     setFileToDelete(null);
   };
 
@@ -291,7 +615,10 @@ export default function TicketFormView({ currentUser, onSubmit, onCancel }) {
     externalAction.agency ||
     externalAction.protocol ||
     externalAction.triggeredAt ||
-    externalAction.responsible;
+    externalAction.responsible ||
+    externalAction.registrationNumber ||
+    externalAction.tension ||
+    externalAction.serviceType;
 
   // ----------------------------------------
   // SUBMISSÃO DO FORMULÁRIO
@@ -315,8 +642,8 @@ export default function TicketFormView({ currentUser, onSubmit, onCancel }) {
         id: Date.now(),
         type: "create",
         message: "Chamado de infraestrutura aberto no sistema.",
-        date: now
-      }
+        date: now,
+      },
     ];
 
     if (occurrenceData.priority) {
@@ -324,7 +651,7 @@ export default function TicketFormView({ currentUser, onSubmit, onCancel }) {
         id: Date.now() + 1,
         type: "priority",
         message: `Prioridade inicial definida como [${occurrenceData.priority}].`,
-        date: now
+        date: now,
       });
     }
 
@@ -335,11 +662,15 @@ export default function TicketFormView({ currentUser, onSubmit, onCancel }) {
         message: `Acionamento externo registrado para [${
           externalAction.agency || "Órgão/concessionária não informado"
         }]${
+          externalAction.registrationNumber
+            ? ` com matrícula/instalação [${externalAction.registrationNumber}]`
+            : ""
+        }${
           externalAction.protocol
-            ? ` com protocolo [${externalAction.protocol}]`
+            ? ` e protocolo [${externalAction.protocol}]`
             : ""
         }.`,
-        date: now
+        date: now,
       });
     }
 
@@ -348,19 +679,16 @@ export default function TicketFormView({ currentUser, onSubmit, onCancel }) {
         id: Date.now() + 3,
         type: "upload",
         message: `${attachments.length} anexo(s) incluído(s) na abertura do chamado.`,
-        date: now
+        date: now,
       });
     }
 
     const newTicket = {
       id: generateTicketId(),
-
       createdAt: now,
       updatedAt: now,
-
       origin: currentUser?.role || "Escola",
       openedBy: currentUser?.username || currentUser?.name || "Usuário",
-
       status: "Aberto",
 
       // Compatibilidade com componentes antigos
@@ -370,18 +698,28 @@ export default function TicketFormView({ currentUser, onSubmit, onCancel }) {
       category,
       subcategory,
 
+      // Novos campos ligados à tabela tickets
+      serviceType: externalAction.serviceType || detectServiceType(category, subcategory),
+      utilityAccountId: externalAction.utilityAccountId || null,
+      schoolPhoneSecondary: schoolData.phoneSecondary,
+      contactNotes: schoolData.contactNotes,
+      referencePoint: schoolData.referencePoint,
+
       school: {
         cre: schoolData.cre,
         code: schoolData.code,
         name: schoolData.name,
         address: schoolData.address,
         neighborhood: schoolData.neighborhood,
-        phone: schoolData.phone
+        phone: schoolData.phone,
+        phoneSecondary: schoolData.phoneSecondary,
+        referencePoint: schoolData.referencePoint,
+        contactNotes: schoolData.contactNotes,
+        installationNotes: schoolData.installationNotes,
       },
 
       priority: occurrenceData.priority,
       impact: occurrenceData.impact,
-
       description: occurrenceData.description,
       affectedLocation: occurrenceData.affectedLocation,
       scope: occurrenceData.scope,
@@ -392,7 +730,11 @@ export default function TicketFormView({ currentUser, onSubmit, onCancel }) {
         triggeredAt: externalAction.triggeredAt
           ? new Date(externalAction.triggeredAt).toISOString()
           : null,
-        responsible: externalAction.responsible
+        responsible: externalAction.responsible,
+        serviceType: externalAction.serviceType,
+        utilityAccountId: externalAction.utilityAccountId,
+        registrationNumber: externalAction.registrationNumber,
+        tension: externalAction.tension,
       },
 
       resolution: {
@@ -400,20 +742,19 @@ export default function TicketFormView({ currentUser, onSubmit, onCancel }) {
         resolvedAt: null,
         confirmedBySchool: false,
         closedAt: null,
-        closedBy: ""
+        closedBy: "",
       },
 
       recurrence: {
         isRecurring: false,
-        linkedTicketId: null
+        linkedTicketId: null,
       },
 
       assignedTo: [],
       priorityIndex: 999,
-
       comments: [],
       attachments,
-      history
+      history,
     };
 
     onSubmit(newTicket);
@@ -425,12 +766,12 @@ export default function TicketFormView({ currentUser, onSubmit, onCancel }) {
         <div>
           <h2 className="text-2xl font-bold text-slate-800 flex items-center">
             <PlusCircle className="mr-2 text-[#13335a]" />
-            Abrir Chamado de Infraestrutura Escolar
+            Abrir Chamado de Concessionárias
           </h2>
 
           <p className="text-sm text-slate-500 mt-1">
             Registre ocorrências de água, saneamento, energia, poda,
-            conservação predial e outras demandas da unidade escolar.
+            conservação predial e outras demandas da unidade escolar. [### O QUE DEVE VIR ESCRITO AQUI? ###]
           </p>
         </div>
 
@@ -442,437 +783,233 @@ export default function TicketFormView({ currentUser, onSubmit, onCancel }) {
 
       <form onSubmit={handleSubmit} className="space-y-8">
         {/* IDENTIFICAÇÃO DA UNIDADE */}
-        <section className="p-5 bg-slate-50 rounded-xl border border-slate-200">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-4">
-            <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center">
-              <School className="w-4 h-4 mr-2 text-[#13335a]" />
-              Dados da Unidade Escolar
+        <section className="p-5 bg-blue-50/40 rounded-xl border border-blue-100">
+          <div className="flex items-center justify-between gap-4 mb-5">
+            <h3 className="text-sm font-bold text-[#13335a] uppercase tracking-wider flex items-center">
+              <MapPin className="w-5 h-5 mr-2" />
+              Identificação da Unidade Escolar
             </h3>
-
-            {isSchoolUser && (
-              <span className="text-xs bg-blue-50 text-blue-700 border border-blue-100 px-3 py-1 rounded-full">
-                Unidade vinculada ao perfil Escola
-              </span>
-            )}
           </div>
 
           {schoolsError && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700 flex items-start">
-              <AlertTriangle className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
-              <span>{schoolsError}</span>
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+              {schoolsError}
             </div>
           )}
 
-          {isSchoolUser && schoolsLoading && (
-            <div className="mb-4 p-3 bg-blue-50 border border-blue-100 rounded-lg text-xs text-blue-700">
-              Carregando dados da unidade vinculada ao seu perfil...
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                CRE
-              </label>
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+            {/* LINHA 1: CRE, DESIGNAÇÃO, NOME DA ESCOLA */}
+            <div className="md:col-span-2 relative">
+              <div className="flex justify-between items-center mb-1">
+                <label className="block text-sm font-medium text-slate-700">
+                  CRE <span className="text-red-500">*</span>
+                </label>
+              </div>
 
               <select
-                required
-                disabled={isSchoolUser}
-                className="w-full p-2 pr-8 border rounded bg-white focus:outline-none focus:ring-2 focus:ring-[#66b6e3] disabled:bg-slate-100 disabled:text-slate-500"
+                className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-[#66b6e3] text-sm"
                 value={schoolData.cre}
-                onChange={e => handleSchoolChange("cre", e.target.value)}
+                onChange={(e) => handleSchoolChange("cre", e.target.value)}
+                disabled={isSchoolUser}
               >
-                <option value="">Selecione a CRE...</option>
-
-                {CRES.map(cre => (
-                  <option key={cre} value={cre}>
-                    {cre}
-                  </option>
-                ))}
+                <option value="">Selecione (CRE)...</option>
+                <option value="1ª CRE">1ª CRE</option>
+                <option value="2ª CRE">2ª CRE</option>
+                <option value="3ª CRE">3ª CRE</option>
+                <option value="4ª CRE">4ª CRE</option>
+                <option value="5ª CRE">5ª CRE</option>
+                <option value="6ª CRE">6ª CRE</option>
+                <option value="7ª CRE">7ª CRE</option>
+                <option value="8ª CRE">8ª CRE</option>
+                <option value="9ª CRE">9ª CRE</option>
+                <option value="10ª CRE">10ª CRE</option>
+                <option value="11ª CRE">11ª CRE</option>
               </select>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Código da unidade
-              </label>
+            <div className="md:col-span-2 relative">
+              <div className="flex justify-between items-center mb-1">
+                <label className="block text-sm font-medium text-slate-700">
+                  Designação <span className="text-red-500">*</span>
+                </label>
+              </div>
 
               <input
-                required
                 type="text"
-                className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-[#66b6e3] disabled:bg-slate-100 disabled:text-slate-500"
-                placeholder="Ex: 0301012"
+                disabled={isSchoolUser}
+                className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-[#66b6e3] disabled:bg-slate-100 disabled:text-slate-500 text-sm"
+                placeholder="Designação..."
                 value={schoolData.code}
-                disabled={isSchoolUser}
-                onChange={e => handleSchoolChange("code", e.target.value)}
+                onChange={(e) => handleSchoolChange("code", e.target.value)}
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Telefone da direção
-              </label>
-
-              <div className="relative">
-                <Phone className="absolute left-2 top-2.5 w-4 h-4 text-slate-400" />
-
-                <input
-                  required
-                  type="text"
-                  className="w-full p-2 pl-8 border rounded focus:outline-none focus:ring-2 focus:ring-[#66b6e3]"
-                  placeholder="Ex: (21) 99999-9999"
-                  value={schoolData.phone}
-                  onChange={e => handleSchoolChange("phone", e.target.value)}
-                />
+            <div className="md:col-span-8 relative">
+              <div className="flex justify-between items-center mb-1">
+                <label className="block text-sm font-medium text-slate-700">
+                  Nome da Escola <span className="text-red-500">*</span>
+                </label>
               </div>
-            </div>
-
-            <div className="md:col-span-3">
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Nome da unidade escolar
-              </label>
-
-              <div className="relative">
-                <Building2 className="absolute left-2 top-2.5 w-4 h-4 text-slate-400" />
-
-                <select
-                  required={!isSchoolUser}
-                  value={selectedSchoolId}
-                  onChange={handleSchoolSelect}
-                  disabled={isSchoolUser}
-                  className="w-full p-2 pl-8 border rounded bg-white focus:outline-none focus:ring-2 focus:ring-[#66b6e3] disabled:bg-slate-100 disabled:text-slate-500"
-                >
-                  <option value="">
-                    {schoolsLoading
-                      ? "Carregando unidades..."
-                      : "Selecione a unidade"}
-                  </option>
-
-                  {schools.map(school => (
-                    <option key={school.id} value={school.id}>
-                      {school.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {isSchoolUser && schoolData.name && !selectedSchoolId && (
-                <p className="text-xs text-slate-500 mt-1">
-                  Unidade identificada pelo perfil:{" "}
-                  <strong>{schoolData.name}</strong>
-                </p>
-              )}
-            </div>
-
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Endereço
-              </label>
-
-              <div className="relative">
-                <MapPin className="absolute left-2 top-2.5 w-4 h-4 text-slate-400" />
-
-                <input
-                  required
-                  type="text"
-                  disabled={isSchoolUser}
-                  className="w-full p-2 pl-8 border rounded focus:outline-none focus:ring-2 focus:ring-[#66b6e3] disabled:bg-slate-100 disabled:text-slate-500"
-                  placeholder="Rua, número e complemento"
-                  value={schoolData.address}
-                  onChange={e => handleSchoolChange("address", e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Bairro
-              </label>
-
-              <input
-                required
-                type="text"
-                disabled={isSchoolUser}
-                className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-[#66b6e3] disabled:bg-slate-100 disabled:text-slate-500"
-                placeholder="Ex: Méier"
-                value={schoolData.neighborhood}
-                onChange={e =>
-                  handleSchoolChange("neighborhood", e.target.value)
-                }
-              />
-            </div>
-          </div>
-        </section>
-
-        {/* CLASSIFICAÇÃO DA OCORRÊNCIA */}
-        <section className="p-5 bg-blue-50/40 rounded-xl border border-blue-100">
-          <h3 className="text-sm font-bold text-[#13335a] mb-4 uppercase tracking-wider flex items-center">
-            <ClipboardList className="w-4 h-4 mr-2" />
-            Classificação da Ocorrência
-          </h3>
-
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Categoria
-              </label>
 
               <select
-                required
-                className="w-full p-2 pr-8 border rounded bg-white focus:outline-none focus:ring-2 focus:ring-[#66b6e3]"
-                value={category}
-                onChange={e => {
-                  setCategory(e.target.value);
-                  setSubcategory("");
-                }}
-              >
-                <option value="">Selecione...</option>
-
-                {Object.keys(INFRASTRUCTURE_TREE).map(item => (
-                  <option key={item} value={item}>
-                    {item}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Subcategoria
-              </label>
-
-              <select
-                required
-                disabled={!category}
-                className="w-full p-2 pr-8 border rounded bg-white disabled:bg-slate-100 disabled:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#66b6e3]"
-                value={subcategory}
-                onChange={e => setSubcategory(e.target.value)}
+                className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-[#66b6e3] disabled:bg-slate-100 text-sm"
+                value={selectedSchoolId}
+                onChange={handleSchoolSelect}
+                disabled={isSchoolUser || schoolsLoading}
               >
                 <option value="">
-                  {category ? "Selecione..." : "Escolha a categoria"}
+                  {schoolsLoading
+                    ? "Carregando escolas..."
+                    : "Selecione (Nome da Escola)..."}
                 </option>
 
-                {subcategoryOptions.map(item => (
-                  <option key={item} value={item}>
-                    {item}
+                {schools.map((school) => (
+                  <option key={school.id} value={school.id}>
+                    {school.name}
                   </option>
                 ))}
               </select>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Prioridade
-              </label>
-
-              <select
-                required
-                className="w-full p-2 pr-8 border rounded bg-white focus:outline-none focus:ring-2 focus:ring-[#66b6e3]"
-                value={occurrenceData.priority}
-                onChange={e =>
-                  handleOccurrenceChange("priority", e.target.value)
-                }
-              >
-                <option value="">Selecione...</option>
-
-                {PRIORITIES.map(priority => (
-                  <option key={priority.name} value={priority.name}>
-                    {priority.name} — SLA {priority.slaHours}h
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Impacto
-              </label>
-
-              <select
-                required
-                className="w-full p-2 pr-8 border rounded bg-white focus:outline-none focus:ring-2 focus:ring-[#66b6e3]"
-                value={occurrenceData.impact}
-                onChange={e =>
-                  handleOccurrenceChange("impact", e.target.value)
-                }
-              >
-                <option value="">Selecione...</option>
-
-                {IMPACTS.map(impact => (
-                  <option key={impact} value={impact}>
-                    {impact}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 flex items-start">
-            <Siren className="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" />
-
-            <span>
-              Chamados críticos devem ser usados para risco imediato à operação
-              ou segurança, como falta total de água, falta de energia, esgoto
-              dentro da unidade ou unidade interditada.
-            </span>
-          </div>
-        </section>
-
-        {/* DESCRIÇÃO DA OCORRÊNCIA */}
-        <section className="space-y-4">
-          <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wider flex items-center">
-            <AlertTriangle className="w-4 h-4 mr-2 text-[#13335a]" />
-            Detalhamento da Ocorrência
-          </h3>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              Título resumido
-            </label>
-
-            <input
-              required
-              type="text"
-              className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-[#66b6e3]"
-              placeholder="Ex: Unidade sem abastecimento de água"
-              value={occurrenceData.title}
-              onChange={e => handleOccurrenceChange("title", e.target.value)}
-            />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Local afetado
-              </label>
-
-              <input
-                required
-                type="text"
-                className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-[#66b6e3]"
-                placeholder="Ex: cozinha, banheiros, pátio, toda unidade"
-                value={occurrenceData.affectedLocation}
-                onChange={e =>
-                  handleOccurrenceChange("affectedLocation", e.target.value)
-                }
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Abrangência
-              </label>
-
-              <input
-                required
-                type="text"
-                className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-[#66b6e3]"
-                placeholder="Ex: toda unidade, área externa, bloco administrativo"
-                value={occurrenceData.scope}
-                onChange={e => handleOccurrenceChange("scope", e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              Descrição objetiva
-            </label>
-
-            <textarea
-              required
-              rows={5}
-              className="w-full p-2 border rounded resize-none focus:outline-none focus:ring-2 focus:ring-[#66b6e3]"
-              placeholder="Descreva o problema, desde quando ocorre, impacto no atendimento, providências já tomadas e informações relevantes."
-              value={occurrenceData.description}
-              onChange={e =>
-                handleOccurrenceChange("description", e.target.value)
-              }
-            />
-          </div>
-        </section>
-
-        {/* ACIONAMENTO EXTERNO */}
-        <section className="p-5 bg-slate-50 rounded-xl border border-slate-200">
-          <h3 className="text-sm font-bold text-slate-700 mb-4 uppercase tracking-wider flex items-center">
-            <Wrench className="w-4 h-4 mr-2 text-[#13335a]" />
-            Acionamento Externo
-            <span className="ml-2 text-[10px] normal-case font-medium text-slate-400">
-              opcional na abertura
-            </span>
-          </h3>
-
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Órgão/concessionária
-              </label>
-
-              <select
-                className="w-full p-2 pr-8 border rounded bg-white focus:outline-none focus:ring-2 focus:ring-[#66b6e3]"
-                value={externalAction.agency}
-                onChange={e =>
-                  handleExternalActionChange("agency", e.target.value)
-                }
-              >
-                <option value="">Selecione...</option>
-
-                {AGENCIES.map(agency => (
-                  <option key={agency} value={agency}>
-                    {agency}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Protocolo
-              </label>
+            {/* LINHA 2: ENDEREÇO, BAIRRO, PONTO DE REFERÊNCIA */}
+            <div className="md:col-span-5 relative">
+              <div className="flex justify-between items-center mb-1">
+                <label className="block text-sm font-medium text-slate-700">
+                  Endereço <span className="text-red-500">*</span>
+                </label>
+              </div>
 
               <input
                 type="text"
-                className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-[#66b6e3]"
-                placeholder="Ex: AR-2026-998877"
-                value={externalAction.protocol}
-                onChange={e =>
-                  handleExternalActionChange("protocol", e.target.value)
-                }
+                disabled={isSchoolUser}
+                className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-[#66b6e3] disabled:bg-slate-100 disabled:text-slate-500 text-sm"
+                placeholder="Preencher endereço..."
+                value={schoolData.address}
+                onChange={(e) => handleSchoolChange("address", e.target.value)}
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Data/hora do acionamento
-              </label>
-
-              <input
-                type="datetime-local"
-                className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-[#66b6e3]"
-                value={externalAction.triggeredAt}
-                onChange={e =>
-                  handleExternalActionChange("triggeredAt", e.target.value)
-                }
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Responsável
-              </label>
+            <div className="md:col-span-3 relative">
+              <div className="flex justify-between items-center mb-1">
+                <label className="block text-sm font-medium text-slate-700">
+                  Bairro <span className="text-red-500">*</span>
+                </label>
+              </div>
 
               <input
                 type="text"
-                className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-[#66b6e3]"
-                placeholder="Ex: CTO, CRE, COR"
-                value={externalAction.responsible}
-                onChange={e =>
-                  handleExternalActionChange("responsible", e.target.value)
-                }
+                disabled={isSchoolUser}
+                className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-[#66b6e3] disabled:bg-slate-100 disabled:text-slate-500 text-sm"
+                placeholder="Preencher bairro..."
+                value={schoolData.neighborhood}
+                onChange={(e) => handleSchoolChange("neighborhood", e.target.value)}
+              />
+            </div>
+
+            <div className="md:col-span-4 relative">
+              <div className="flex justify-between items-center mb-1">
+                <label className="block text-sm font-medium text-slate-700">
+                  Ponto de Referência
+                </label>
+              </div>
+
+              <input
+                type="text"
+                className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-[#66b6e3] text-sm"
+                placeholder="Ex: próximo à praça, entrada lateral..."
+                value={schoolData.referencePoint}
+                onChange={(e) => handleSchoolChange("referencePoint", e.target.value)}
+              />
+            </div>
+
+            {/* LINHA 3: TELEFONE 1, TELEFONE 2, CONTATO VINCULADO */}
+            <div className="md:col-span-3 relative">
+              <div className="flex justify-between items-center mb-1">
+                <label className="block text-sm font-medium text-slate-700">
+                  Telefone Direção <span className="text-red-500">*</span>
+                </label>
+              </div>
+
+              <div className="relative">
+                <Phone className="absolute left-2 top-2 w-4 h-4 text-slate-400" />
+                <input
+                  type="text"
+                  className="w-full p-2 pl-8 border rounded focus:outline-none focus:ring-2 focus:ring-[#66b6e3] text-sm"
+                  placeholder="Telefone principal..."
+                  value={schoolData.phone}
+                  onChange={(e) => handleSchoolChange("phone", e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="md:col-span-3 relative">
+              <div className="flex justify-between items-center mb-1">
+                <label className="block text-sm font-medium text-slate-700">
+                  Telefone Secundário
+                </label>
+              </div>
+
+              <input
+                type="text"
+                className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-[#66b6e3] text-sm"
+                placeholder="Outro telefone da unidade..."
+                value={schoolData.phoneSecondary}
+                onChange={(e) => handleSchoolChange("phoneSecondary", e.target.value)}
+              />
+            </div>
+
+            <div className="md:col-span-6 relative">
+              <div className="flex justify-between items-center mb-1">
+                <label className="block text-sm font-medium text-slate-700">
+                  Contato vinculado ao telefone secundário
+                </label>
+              </div>
+
+              <input
+                type="text"
+                className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-[#66b6e3] text-sm"
+                placeholder="Ex: secretaria, direção adjunta, portaria, melhor horário para contato..."
+                value={schoolData.contactNotes}
+                onChange={(e) => handleSchoolChange("contactNotes", e.target.value)}
+              />
+            </div>
+
+            {/* LINHA 4: OBSERVAÇÕES DAS INSTALAÇÕES */}
+            <div className="md:col-span-12 relative">
+              <div className="flex justify-between items-center mb-1">
+                <label className="block text-sm font-medium text-slate-700">
+                  Observações
+                </label>
+              </div>
+
+              <textarea
+                rows={3}
+                className="w-full p-2 border rounded resize-none focus:outline-none focus:ring-2 focus:ring-[#66b6e3] text-sm"
+                placeholder="Ex: quadro de luz, casa de bombas, hidrômetro, entrada de serviço, bloco afetado..."
+                value={schoolData.installationNotes}
+                onChange={(e) => handleSchoolChange("installationNotes", e.target.value)}
               />
             </div>
           </div>
         </section>
+
+        {/* OCORRÊNCIA: CLASSIFICAÇÃO + ACIONAMENTO EXTERNO + DETALHAMENTO */}
+        <OccurrenceSection
+          category={category}
+          setCategory={setCategory}
+          subcategory={subcategory}
+          setSubcategory={setSubcategory}
+          categoryOptions={categoryOptions}
+          occurrenceTemplates={occurrenceTemplates}
+          templatesLoading={templatesLoading}
+          subcategoryOptions={subcategoryOptions}
+          occurrenceData={occurrenceData}
+          handleOccurrenceChange={handleOccurrenceChange}
+          externalAction={externalAction}
+          handleExternalActionChange={handleExternalActionChange}
+          utilitiesLoading={utilitiesLoading}
+          utilitiesError={utilitiesError}
+        />
 
         {/* ANEXOS */}
         <section>
@@ -882,7 +1019,7 @@ export default function TicketFormView({ currentUser, onSubmit, onCancel }) {
 
           {attachments.length > 0 && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-              {attachments.map(att => (
+              {attachments.map((att) => (
                 <div
                   key={att.id}
                   className="flex items-center justify-between p-2 border rounded border-slate-200 bg-slate-50"

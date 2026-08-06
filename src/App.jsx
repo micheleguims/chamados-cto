@@ -24,6 +24,7 @@ import AllocationView from "./views/AllocationView";
 import MetricsView from "./views/MetricsView";
 import DocumentationView from "./views/DocumentationView";
 import { createTicket, getTickets, updateTicket } from "./services/ticketService";
+import { signOut } from "./services/authService";
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -44,20 +45,22 @@ export default function App() {
     useState("");
 
   useEffect(() => {
-      const loadTickets = async () => {
-        try {
-          const data =
-            await getTickets();
-          setTickets(data || []);
-        } catch (error) {
-          console.error(
-            "Erro ao carregar chamados:",
-            error
-          );
-        }
-      };
-      loadTickets();
-    }, [])
+    if (!currentUser) {
+      setTickets([]);
+      return;
+    }
+
+    const loadTickets = async () => {
+      try {
+        const data = await getTickets();
+        setTickets(data || []);
+      } catch (error) {
+        console.error("Erro ao carregar chamados:", error);
+      }
+    };
+
+    loadTickets();
+  }, [currentUser]);
 
 
   // ----------------------------------------
@@ -69,8 +72,15 @@ export default function App() {
     setCurrentView("list");
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await signOut();
+    } catch (error) {
+      console.error("Erro ao sair:", error);
+    }
+
     setCurrentUser(null);
+    setTickets([]);
     setCurrentView("list");
     setSelectedTicket(null);
     setHistoryMode(false);
